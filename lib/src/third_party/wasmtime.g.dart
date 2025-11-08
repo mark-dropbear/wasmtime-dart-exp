@@ -4,114 +4,44 @@
 // ignore_for_file: type=lint, unused_import
 import 'dart:ffi' as ffi;
 
+/// ////////////////////////////////////////////////////////////////////////////
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_config_t>)>()
+external void wasm_config_delete(ffi.Pointer<wasm_config_t> arg0);
+
+@ffi.Native<ffi.Pointer<wasm_config_t> Function()>()
+external ffi.Pointer<wasm_config_t> wasm_config_new();
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<wasm_engine_t>)>()
 external void wasm_engine_delete(ffi.Pointer<wasm_engine_t> arg0);
 
 @ffi.Native<ffi.Pointer<wasm_engine_t> Function()>()
 external ffi.Pointer<wasm_engine_t> wasm_engine_new();
 
-@ffi.Native<ffi.Pointer<wasm_store_t> Function(ffi.Pointer<wasm_engine_t>)>()
-external ffi.Pointer<wasm_store_t> wasm_store_new(
-  ffi.Pointer<wasm_engine_t> arg0,
+@ffi.Native<ffi.Pointer<wasm_engine_t> Function(ffi.Pointer<wasm_config_t>)>()
+external ffi.Pointer<wasm_engine_t> wasm_engine_new_with_config(
+  ffi.Pointer<wasm_config_t> arg0,
 );
 
-/// \brief Returns the user-specified data associated with the specified store
-@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<wasmtime_context>)>()
-external ffi.Pointer<ffi.Void> wasmtime_context_get_data(
-  ffi.Pointer<wasmtime_context> context,
+/// \brief Increments the engine-local epoch variable.
+///
+/// This function will increment the engine's current epoch which can be used to
+/// force WebAssembly code to trap if the current epoch goes beyond the
+/// #wasmtime_store_t configured epoch deadline.
+///
+/// This function is safe to call from any thread, and it is also
+/// async-signal-safe.
+///
+/// See also #wasmtime_config_epoch_interruption_set.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_engine_t>)>()
+external void wasmtime_engine_increment_epoch(
+  ffi.Pointer<wasm_engine_t> engine,
 );
 
-/// \brief Creates a new host function in the same manner of #wasmtime_func_new,
-/// but the function-to-call has no type information available at runtime.
-///
-/// This function is very similar to #wasmtime_func_new. The difference is that
-/// this version is "more unsafe" in that when the host callback is invoked there
-/// is no type information and no checks that the right types of values are
-/// produced. The onus is on the consumer of this API to ensure that all
-/// invariants are upheld such as:
-///
-/// * The host callback reads parameters correctly and interprets their types
-/// correctly.
-/// * If a trap doesn't happen then all results are written to the results
-/// pointer. All results must have the correct type.
-/// * Types such as `funcref` cannot cross stores.
-/// * Types such as `externref` have valid reference counts.
-///
-/// It's generally only recommended to use this if your application can wrap
-/// this in a safe embedding. This should not be frequently used due to the
-/// number of invariants that must be upheld on the wasm<->host boundary. On the
-/// upside, though, this flavor of host function will be faster to call than
-/// those created by #wasmtime_func_new (hence the reason for this function's
-/// existence).
-@ffi.Native<
-  ffi.Void Function(
-    ffi.Pointer<wasmtime_context>,
-    ffi.Pointer<wasm_functype_t>,
-    ffi.Pointer<
-      ffi.NativeFunction<
-        ffi.Pointer<wasm_trap_t> Function(
-          ffi.Pointer<ffi.Void> env,
-          ffi.Pointer<wasmtime_caller> caller,
-          ffi.Pointer<wasmtime_val_raw> args_and_results,
-          ffi.Size num_args_and_results,
-        )
-      >
-    >,
-    ffi.Pointer<ffi.Void>,
-    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
-    ffi.Pointer<wasmtime_func>,
-  )
->()
-external void wasmtime_func_new_unchecked(
-  ffi.Pointer<wasmtime_context> store,
-  ffi.Pointer<wasm_functype_t> type,
-  ffi.Pointer<
-    ffi.NativeFunction<
-      ffi.Pointer<wasm_trap_t> Function(
-        ffi.Pointer<ffi.Void> env,
-        ffi.Pointer<wasmtime_caller> caller,
-        ffi.Pointer<wasmtime_val_raw> args_and_results,
-        ffi.Size num_args_and_results,
-      )
-    >
-  >
-  callback,
-  ffi.Pointer<ffi.Void> env,
-  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
-  finalizer,
-  ffi.Pointer<wasmtime_func> ret,
-);
+/// \brief Returns whether this engine is using the Pulley interpreter to execute
+/// WebAssembly code.
+@ffi.Native<ffi.Bool Function(ffi.Pointer<wasm_engine_t>)>()
+external bool wasmtime_engine_is_pulley(ffi.Pointer<wasm_engine_t> engine);
+
+final class wasm_config_t extends ffi.Opaque {}
 
 final class wasm_engine_t extends ffi.Opaque {}
-
-final class wasm_store_t extends ffi.Opaque {}
-
-final class wasm_functype_t extends ffi.Opaque {}
-
-final class wasm_trap_t extends ffi.Opaque {}
-
-final class wasmtime_context extends ffi.Opaque {}
-
-/// \brief Representation of a function in Wasmtime.
-///
-/// Functions in Wasmtime are represented as an index into a store and don't
-/// have any data or destructor associated with the #wasmtime_func_t value.
-/// Functions cannot interoperate between #wasmtime_store_t instances and if the
-/// wrong function is passed to the wrong store then it may trigger an assertion
-/// to abort the process.
-final class wasmtime_func extends ffi.Opaque {}
-
-/// \typedef wasmtime_val_raw_t
-/// \brief Convenience alias for #wasmtime_val_raw
-///
-/// \union wasmtime_val_raw
-/// \brief Container for possible wasm values.
-///
-/// This type is used on conjunction with #wasmtime_func_new_unchecked as well
-/// as #wasmtime_func_call_unchecked. Instances of this type do not have type
-/// information associated with them, it's up to the embedder to figure out
-/// how to interpret the bits contained within, often using some other channel
-/// to determine the type.
-final class wasmtime_val_raw extends ffi.Opaque {}
-
-final class wasmtime_caller extends ffi.Opaque {}

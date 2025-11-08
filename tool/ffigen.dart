@@ -18,9 +18,11 @@ void main() {
     functions: Functions.includeSet({
       'wasm_engine_new',
       'wasm_engine_delete',
-      'wasm_store_new',
-      'wasmtime_func_new_unchecked',
-      'wasmtime_context_get_data',
+      'wasm_config_new',
+      'wasm_config_delete',
+      'wasm_engine_new_with_config',
+      'wasmtime_engine_increment_epoch',
+      'wasmtime_engine_is_pulley',
     }),
     output: Output(
       dartFile: packageRoot.resolve('lib/src/third_party/wasmtime.g.dart'),
