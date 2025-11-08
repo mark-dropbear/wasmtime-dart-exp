@@ -5,14 +5,10 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/wasmtime_bindings.dart';
 
-@Native<Pointer<wasm_engine_t> Function()>(
-  assetId: 'package:wasmtime/libwasmtime',
-)
+@Native<Pointer<wasm_engine_t> Function()>()
 external Pointer<wasm_engine_t> wasm_engine_new();
 
-@Native<Void Function(Pointer<wasm_engine_t>)>(
-  assetId: 'package:wasmtime/libwasmtime',
-)
+@Native<Void Function(Pointer<wasm_engine_t>)>()
 external void wasm_engine_delete(Pointer<wasm_engine_t> engine);
 
 @Native<
@@ -21,29 +17,23 @@ external void wasm_engine_delete(Pointer<wasm_engine_t> engine);
     IntPtr,
     Pointer<wasm_byte_vec_t>,
   )
->(assetId: 'package:wasmtime/libwasmtime')
+>()
 external Pointer<wasmtime_error_t> wasmtime_wat2wasm(
   Pointer<Char> wat,
   int wat_len,
   Pointer<wasm_byte_vec_t> ret,
 );
 
-@Native<Void Function(Pointer<wasmtime_error_t>, Pointer<wasm_name_t>)>(
-  assetId: 'package:wasmtime/libwasmtime',
-)
+@Native<Void Function(Pointer<wasmtime_error_t>, Pointer<wasm_name_t>)>()
 external void wasmtime_error_message(
   Pointer<wasmtime_error_t> error,
   Pointer<wasm_name_t> message,
 );
 
-@Native<Void Function(Pointer<wasmtime_error_t>)>(
-  assetId: 'package:wasmtime/libwasmtime',
-)
+@Native<Void Function(Pointer<wasmtime_error_t>)>()
 external void wasmtime_error_delete(Pointer<wasmtime_error_t> error);
 
-@Native<Void Function(Pointer<wasm_byte_vec_t>)>(
-  assetId: 'package:wasmtime/libwasmtime',
-)
+@Native<Void Function(Pointer<wasm_byte_vec_t>)>()
 external void wasm_byte_vec_delete(Pointer<wasm_byte_vec_t> vec);
 
 class Wasmtime {

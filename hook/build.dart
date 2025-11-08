@@ -16,12 +16,13 @@ void main(List<String> args) async {
       'lib',
       'libwasmtime.so',
     );
+    final libUri = Uri.file(libPath);
 
     final asset = CodeAsset(
       package: 'wasmtime',
-      name: 'libwasmtime',
-      linkMode: DynamicLoadingBundled(), // Corrected LinkMode
-      file: Uri.file(libPath),
+      name: 'src/wasmtime.dart',
+      linkMode: DynamicLoadingBundled(),
+      file: libUri,
     );
 
     // The hook should place downloaded and generated assets in
@@ -31,5 +32,6 @@ void main(List<String> args) async {
     await File(libPath).copy(destination);
 
     output.assets.code.add(asset);
+    output.dependencies.add(libUri);
   });
 }
