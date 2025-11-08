@@ -1,0 +1,19 @@
+name: 'Setup wasmtime-py CI'
+inputs:
+  python-version:
+    description: 'Version of Python to configure'
+    required: false
+    default: '3.x'
+runs:
+  using: "composite"
+  steps:
+  # Setup Python and the Python dependencies of this project
+  - uses: actions/setup-python@v5
+    with:
+      python-version: ${{ inputs.python-version }}
+  - run: pip install -e ".[testing]"
+    shell: bash
+
+  # Download precompiled wasmtime binaries for running the project
+  - run: python ci/download-wasmtime.py
+    shell: bash

@@ -1,0 +1,159 @@
+<div align="center">
+  <h1><code>wasmtime-dotnet</code></h1>
+
+  <p>
+    <strong>.NET embedding of
+    <a href="https://github.com/bytecodealliance/wasmtime">Wasmtime</a></strong>
+  </p>
+
+  <strong>A <a href="https://bytecodealliance.org/">Bytecode Alliance</a> project</strong>
+
+  <p>
+    <a href="https://github.com/bytecodealliance/wasmtime-dotnet/actions/workflows/main.yml">
+      <img src="https://github.com/bytecodealliance/wasmtime-dotnet/actions/workflows/main.yml/badge.svg" alt="CI status"/>
+    </a>
+    <a href="https://www.nuget.org/packages/Wasmtime">
+      <img src="https://img.shields.io/nuget/v/wasmtime" alt="Latest Version"/>
+    </a>
+    <a href="https://bytecodealliance.github.io/wasmtime-dotnet/">
+      <img src="https://img.shields.io/badge/docs-main-green" alt="Documentation"/>
+    </a>
+  </p>
+
+</div>
+
+## Installation
+
+You can add a package reference with the [.NET SDK](https://dotnet.microsoft.com/):
+
+```text
+$ dotnet add package wasmtime
+```
+
+## Introduction
+
+For this introduction, we'll be using a simple WebAssembly module that imports
+a `hello` function and exports a `run` function:
+
+```wat
+(module
+  (func $hello (import "" "hello"))
+  (func (export "run") (call $hello))
+)
+```
+
+To use this module from .NET, create a new console project:
+
+```
+$ mkdir wasmintro
+$ cd wasmintro
+$ dotnet new console
+```
+
+Next, add a reference to the [Wasmtime package](https://www.nuget.org/packages/Wasmtime):
+
+```
+$ dotnet add package wasmtime
+```
+
+Replace the contents of `Program.cs` with the following code:
+
+```c#
+using System;
+using Wasmtime;
+
+using var engine = new Engine();
+
+using var module = Module.FromText(
+    engine,
+    "hello",
+    "(module (func $hello (import \"\" \"hello\")) (func (export \"run\") (call $hello)))"
+);
+
+using var linker = new Linker(engine);
+using var store = new Store(engine);
+
+linker.Define(
+    "",
+    "hello",
+    Function.FromCallback(store, () => Console.WriteLine("Hello from C#!"))
+);
+
+var instance = linker.Instantiate(store, module);
+var run = instance.GetAction("run")!;
+run();
+```
+
+An `Engine` is created and then a WebAssembly module is loaded from a string in
+WebAssembly text format.
+
+A `Linker` defines a function called `hello` that simply prints a hello message.
+
+The module is instantiated and the instance's `run` export is invoked.
+
+To run the application, simply use `dotnet`:
+
+```
+$ dotnet run
+```
+
+This should print `Hello from C#!`.
+
+## Contributing
+
+### Building
+
+Use `dotnet` to build the repository:
+
+```
+$ dotnet build Wasmtime.sln
+```
+
+This will download the latest development snapshot of Wasmtime for your
+platform.
+
+### Testing
+
+Use `dotnet` to run the unit tests:
+
+```
+$ dotnet test Wasmtime.sln
+```
+
+### Creating the NuGet package
+
+Use `dotnet` to create a NuGet package:
+
+```
+$ cd src
+$ dotnet pack Wasmtime.sln -c Release /p:Packing=true
+```
+
+This will create a `.nupkg` file in `src/bin/Release`.
+
+By default, local builds will use a `-dev` suffix for the package to
+differentiate between official packages and development packages.
+
+### Updating Wasmtime for a release
+
+To update the Wasmtime library used for a new release, change `WasmtimeVersion`
+in `Directory.Build.props`:
+
+```xml
+<WasmtimeVersion Condition="'$(WasmtimeVersion)'==''">$VERSION</WasmtimeVersion>
+```
+
+### Publishing the Wasmtime .NET NuGet package
+
+GitHub actions is used to automatically publish a package to NuGet when a tag
+is pushed to the repository.
+
+To publish a new release, create a release in GitHub and add the relevant
+release notes.
+
+Use a tag of the format `v$VERSION` where `$VERSION` matches the Wasmtime
+version used by the .NET package; ensure the tagged commit matches the last
+commit to make for the release.
+
+When the release is published on GitHub, an action should automatically start
+to build and publish the package to NuGet.
