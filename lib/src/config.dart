@@ -23,4 +23,14 @@ class Config {
       _isDisposed = true;
     }
   }
+
+  /// Transfers ownership of the native resource.
+  ///
+  /// This invalidates the native pointer and marks the object as disposed,
+  /// preventing further attempts to dispose of it from this [Config] object.
+  void takeOwnership() {
+    _isDisposed = true;
+  }
+
+  ffi.Pointer<wasm_config_t> get ptr => _ptr;
 }
