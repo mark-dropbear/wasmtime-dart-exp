@@ -23,6 +23,21 @@ This plan outlines the phased implementation of the `Engine` and `Config` classe
 - Resolved `LateInitializationError` by correctly handling `_ptr` reassignment in `takeOwnership()`.
 - All tests passed after these fixes.
 
+### Phase 3: Implement `Engine` Class
+- Created `lib/src/engine.dart`.
+- Implemented the `Engine` class with default and `withConfig` constructors, `dispose()` method, `incrementEpoch()`, and `isPulley` getter.
+- Updated `lib/wasmtime.dart` to export `src/engine.dart` and `src/config.dart`.
+- Removed the `Awesome` class from `lib/src/wasmtime_base.dart`.
+- Updated `example/wasmtime_example.dart` to use the new `Engine` and `Config` classes.
+- Created `test/engine_test.dart` with unit tests for the `Engine` class.
+- Resolved `undefined_getter` and `undefined_function` errors by adding a `ptr` getter to `Config` and removing irrelevant test code.
+- Resolved `free(): double free detected` error by correctly handling ownership transfer with `Config.takeOwnership()`.
+- All tests passed after these fixes.
+
+### Phase 4: Finalization
+- Updated `README.md` to reflect the current state of the API, keeping the hypothetical usage as a goal.
+- Updated `GEMINI.md` to reflect the current implementation of the `Engine` and `Config` classes.
+
 ## Phase 1: Initial Setup and FFI Bindings
 
 - [x] Run all tests to ensure the project is in a good state before starting modifications.
@@ -81,6 +96,6 @@ This plan outlines the phased implementation of the `Engine` and `Config` classe
 
 ## Phase 4: Finalization
 
-- [ ] Update any README.md file for the package with relevant information from the modification (if any).
-- [ ] Update any GEMINI.md file in the project directory so that it still correctly describes the app, its purpose, and implementation details and the layout of the files.
-- [ ] Ask the user to inspect the package (and running app, if any) and say if they are satisfied with it, or if any modifications are needed.
+- [x] Update any README.md file for the package with relevant information from the modification (if any).
+- [x] Update any GEMINI.md file in the project directory so that it still correctly describes the app, its purpose, and implementation details and the layout of the files.
+- [x] Ask the user to inspect the package (and running app, if any) and say if they are satisfied with it, or if any modifications are needed.
