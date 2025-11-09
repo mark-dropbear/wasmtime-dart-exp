@@ -3,7 +3,6 @@
 /// More dartdocs go here.
 library;
 
-export 'src/wasmtime_base.dart';
 export 'src/config.dart';
 export 'src/engine.dart';
 
