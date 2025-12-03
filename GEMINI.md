@@ -35,10 +35,30 @@ dart run example/wasmtime_example.dart
 
 ## Current Implementation
 
-The current implementation includes the following classes:
+## Current Implementation
 
-- **`Config`**: A wrapper around the native `wasm_config_t`. It can be used to configure an `Engine`.
-- **`Engine`**: A wrapper around the native `wasm_engine_t`. It can be created with a default configuration or with a `Config` object.
+The current implementation includes the following classes and features:
+
+- **Core Classes**:
+    - **`Engine`**: A wrapper around the native `wasm_engine_t`.
+    - **`Config`**: A wrapper around the native `wasm_config_t`.
+    - **`Store`**: A wrapper around the native `wasm_store_t`.
+    - **`Module`**: A wrapper around the native `wasm_module_t`.
+    - **`Instance`**: A wrapper around the native `wasm_instance_t`.
+    - **`Linker`**: A wrapper around the native `wasmtime_linker_t`.
+    - **`Extern`**: A wrapper around the native `wasmtime_extern_t`.
+
+- **Function & Type Support**:
+    - **`Func`**: Represents a WebAssembly function. Supports calling Wasm functions from Dart and creating host functions (Dart callbacks callable from Wasm).
+    - **`Val`**: Represents a WebAssembly value. Supports `i32`, `i64`, `f32`, `f64`, `v128`, `externref`, and `funcref`.
+    - **`ValType`**: Represents a WebAssembly value type.
+    - **`FuncType`**: Represents a WebAssembly function signature.
+
+- **Advanced Features**:
+    - **Host Functions**: Create Wasm functions from Dart callbacks using `Func.from`.
+    - **Traps**: Detailed trap information including frames and messages via the `Trap` class.
+    - **Reference Types**: Full support for `externref` (holding Dart objects) and `funcref`.
+    - **Garbage Collection**: Configured to support Wasm GC.
 
 ## Reference Implementations
 

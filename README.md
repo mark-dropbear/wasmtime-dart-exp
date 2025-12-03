@@ -6,7 +6,7 @@ A Dart embedding of the Wasmtime project.
 
 This package uses dart:ffi to wrap the native Wasmtime library. In order to determine which functions from the native library you have access to you should update the relevant section in `tool/ffigen.dart` and then run `dart run tool/ffigen.dart` again to automatically generate the correct bindings.
 
-## Hypothetical Usage
+## Usage
 
 Here is a "Hello, world!" example of compiling and running a WebAssembly module from Dart.
 
@@ -20,7 +20,7 @@ This example will:
 ```dart
 import 'package:wasmtime/wasmtime.dart';
 
-void main() async {
+void main() {
   // Define the module in WebAssembly Text Format (WAT)
   const wat = r'''
     (module
@@ -33,8 +33,8 @@ void main() async {
   final engine = Engine();
 
   try {
-    // Compile the module. Compilation can be async.
-    final module = await Module.fromText(engine, wat);
+    // Compile the module.
+    final module = Module.fromText(engine, wat);
 
     // Create a store. This holds instance-specific state.
     final store = Store(engine);
@@ -42,23 +42,24 @@ void main() async {
 
     try {
       // Define the host function that satisfies the Wasm import
-      final hostHello = Func.wrap(store, () {
+      final funcType = FuncType([], []);
+      final hostHello = Func.from(store, funcType, () {
         print('Hello from Dart!');
       });
 
       // Link the host function
       linker.define(
         store,
-        module: '',
-        name: 'hello',
-        external: hostHello,
+        '',
+        'hello',
+        Extern.fromFunc(hostHello),
       );
 
       // Instantiate the module
-      final instance = await linker.instantiate(store, module);
+      final instance = linker.instantiate(store, module);
 
       // Get the exported 'run' function
-      final run = instance.getFunction(store, 'run');
+      final run = instance.getExport(store, 'run')?.func;
 
       if (run == null) {
         throw Exception('Export "run" not found');
@@ -66,7 +67,7 @@ void main() async {
 
       // Call the 'run' function.
       // The store is passed as context.
-      await run.call(store);
+      run.call(store);
 
     } finally {
       // Dispose of store-specific resources
@@ -79,6 +80,16 @@ void main() async {
   }
 }
 ```
+
+## Features
+
+- **Wasmtime Runtime**: Full access to the Wasmtime runtime via `dart:ffi`.
+- **Module Compilation**: Compile Wasm modules from text (WAT) or binary.
+- **Instance Management**: Instantiate modules and manage their lifecycle.
+- **Host Functions**: Call Dart functions from WebAssembly.
+- **Reference Types**: Support for `externref` (Dart objects) and `funcref`.
+- **Traps**: Detailed error reporting with stack traces.
+- **Garbage Collection**: Integrated with Wasm GC.
 
 ## Additional information
 
