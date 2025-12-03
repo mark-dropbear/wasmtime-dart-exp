@@ -42,6 +42,62 @@ external void wasmtime_engine_increment_epoch(
 @ffi.Native<ffi.Bool Function(ffi.Pointer<wasm_engine_t>)>()
 external bool wasmtime_engine_is_pulley(ffi.Pointer<wasm_engine_t> engine);
 
+/// \brief Creates a new store within the specified engine.
+///
+/// \param engine the compilation environment with configuration this store is
+/// connected to
+/// \param data user-provided data to store, can later be acquired with
+/// #wasmtime_context_get_data.
+/// \param finalizer an optional finalizer for `data`
+///
+/// This function creates a fresh store with the provided configuration settings.
+/// The returned store must be deleted with #wasmtime_store_delete.
+@ffi.Native<
+  ffi.Pointer<wasmtime_store> Function(
+    ffi.Pointer<wasm_engine_t>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>()
+external ffi.Pointer<wasmtime_store> wasmtime_store_new(
+  ffi.Pointer<wasm_engine_t> engine,
+  ffi.Pointer<ffi.Void> data,
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+  finalizer,
+);
+
+/// \brief Returns the interior #wasmtime_context_t pointer to this store
+@ffi.Native<
+  ffi.Pointer<wasmtime_context> Function(ffi.Pointer<wasmtime_store>)
+>()
+external ffi.Pointer<wasmtime_context> wasmtime_store_context(
+  ffi.Pointer<wasmtime_store> store,
+);
+
+/// \brief Deletes a store.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_store>)>()
+external void wasmtime_store_delete(ffi.Pointer<wasmtime_store> store);
+
+/// \brief Returns the user-specified data associated with the specified store
+@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<wasmtime_context>)>()
+external ffi.Pointer<ffi.Void> wasmtime_context_get_data(
+  ffi.Pointer<wasmtime_context> context,
+);
+
+/// \brief Perform garbage collection within the given context.
+///
+/// Garbage collects `externref`s that are used within this store. Any
+/// `externref`s that are discovered to be unreachable by other code or objects
+/// will have their finalizers run.
+///
+/// The `context` argument must not be NULL.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_context>)>()
+external void wasmtime_context_gc(ffi.Pointer<wasmtime_context> context);
+
 final class wasm_config_t extends ffi.Opaque {}
 
 final class wasm_engine_t extends ffi.Opaque {}
+
+final class wasmtime_store extends ffi.Opaque {}
+
+final class wasmtime_context extends ffi.Opaque {}

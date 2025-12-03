@@ -42,4 +42,6 @@ class Engine {
 
   /// Returns whether this engine is using the Pulley interpreter.
   bool get isPulley => wasmtime_engine_is_pulley(_ptr);
+
+  ffi.Pointer<wasm_engine_t> get ptr => _ptr;
 }

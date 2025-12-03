@@ -23,6 +23,11 @@ void main() {
       'wasm_engine_new_with_config',
       'wasmtime_engine_increment_epoch',
       'wasmtime_engine_is_pulley',
+      'wasmtime_store_new',
+      'wasmtime_store_delete',
+      'wasmtime_store_context',
+      'wasmtime_context_gc',
+      'wasmtime_context_get_data',
     }),
     output: Output(
       dartFile: packageRoot.resolve('lib/src/third_party/wasmtime.g.dart'),
