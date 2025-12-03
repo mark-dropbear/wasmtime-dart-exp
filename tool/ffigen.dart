@@ -28,9 +28,16 @@ void main() {
       'wasmtime_store_context',
       'wasmtime_context_gc',
       'wasmtime_context_get_data',
+      'wasmtime_module_new',
+      'wasmtime_module_delete',
+      'wasmtime_module_validate',
+      'wasmtime_wat2wasm',
+      'wasm_byte_vec_new',
+      'wasm_byte_vec_delete',
     }),
     output: Output(
       dartFile: packageRoot.resolve('lib/src/third_party/wasmtime.g.dart'),
     ),
+    structs: Structs.includeSet({'wasm_byte_vec_t'}),
   ).generate();
 }

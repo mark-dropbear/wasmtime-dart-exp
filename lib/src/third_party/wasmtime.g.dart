@@ -4,6 +4,22 @@
 // ignore_for_file: type=lint, unused_import
 import 'dart:ffi' as ffi;
 
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<wasm_byte_vec_t>,
+    ffi.Size,
+    ffi.Pointer<ffi.Char>,
+  )
+>()
+external void wasm_byte_vec_new(
+  ffi.Pointer<wasm_byte_vec_t> out,
+  int arg1,
+  ffi.Pointer<ffi.Char> arg2,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_byte_vec_t>)>()
+external void wasm_byte_vec_delete(ffi.Pointer<wasm_byte_vec_t> arg0);
+
 /// ////////////////////////////////////////////////////////////////////////////
 @ffi.Native<ffi.Void Function(ffi.Pointer<wasm_config_t>)>()
 external void wasm_config_delete(ffi.Pointer<wasm_config_t> arg0);
@@ -41,6 +57,60 @@ external void wasmtime_engine_increment_epoch(
 /// WebAssembly code.
 @ffi.Native<ffi.Bool Function(ffi.Pointer<wasm_engine_t>)>()
 external bool wasmtime_engine_is_pulley(ffi.Pointer<wasm_engine_t> engine);
+
+/// \brief Compiles a WebAssembly binary into a #wasmtime_module_t
+///
+/// This function will compile a WebAssembly binary into an owned #wasm_module_t.
+/// This performs the same as #wasm_module_new except that it returns a
+/// #wasmtime_error_t type to get richer error information.
+///
+/// On success the returned #wasmtime_error_t is `NULL` and the `ret` pointer is
+/// filled in with a #wasm_module_t. On failure the #wasmtime_error_t is
+/// non-`NULL` and the `ret` pointer is unmodified.
+///
+/// This function does not take ownership of any of its arguments, but the
+/// returned error and module are owned by the caller.
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasm_engine_t>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Pointer<wasmtime_module>>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_module_new(
+  ffi.Pointer<wasm_engine_t> engine,
+  ffi.Pointer<ffi.Uint8> wasm,
+  int wasm_len,
+  ffi.Pointer<ffi.Pointer<wasmtime_module>> ret,
+);
+
+/// \brief Deletes a module.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_module>)>()
+external void wasmtime_module_delete(ffi.Pointer<wasmtime_module> m);
+
+/// \brief Validate a WebAssembly binary.
+///
+/// This function will validate the provided byte sequence to determine if it is
+/// a valid WebAssembly binary within the context of the engine provided.
+///
+/// This function does not take ownership of its arguments but the caller is
+/// expected to deallocate the returned error if it is non-`NULL`.
+///
+/// If the binary validates then `NULL` is returned, otherwise the error returned
+/// describes why the binary did not validate.
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasm_engine_t>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_module_validate(
+  ffi.Pointer<wasm_engine_t> engine,
+  ffi.Pointer<ffi.Uint8> wasm,
+  int wasm_len,
+);
 
 /// \brief Creates a new store within the specified engine.
 ///
@@ -94,9 +164,46 @@ external ffi.Pointer<ffi.Void> wasmtime_context_get_data(
 @ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_context>)>()
 external void wasmtime_context_gc(ffi.Pointer<wasmtime_context> context);
 
+/// \brief Converts from the text format of WebAssembly to the binary format.
+///
+/// \param wat this it the input pointer with the WebAssembly Text Format inside
+/// of it. This will be parsed and converted to the binary format.
+/// \param wat_len this it the length of `wat`, in bytes.
+/// \param ret if the conversion is successful, this byte vector is filled in
+/// with the WebAssembly binary format.
+///
+/// \return a non-null error if parsing fails, or returns `NULL`. If parsing
+/// fails then `ret` isn't touched.
+///
+/// This function does not take ownership of `wat`, and the caller is expected to
+/// deallocate the returned #wasmtime_error_t and #wasm_byte_vec_t.
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasm_byte_vec_t>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_wat2wasm(
+  ffi.Pointer<ffi.Char> wat,
+  int wat_len,
+  ffi.Pointer<wasm_byte_vec_t> ret,
+);
+
+final class wasm_byte_vec_t extends ffi.Struct {
+  @ffi.Size()
+  external int size;
+
+  external ffi.Pointer<ffi.Char> data;
+}
+
 final class wasm_config_t extends ffi.Opaque {}
 
 final class wasm_engine_t extends ffi.Opaque {}
+
+final class wasmtime_error extends ffi.Opaque {}
+
+final class wasmtime_module extends ffi.Opaque {}
 
 final class wasmtime_store extends ffi.Opaque {}
 
