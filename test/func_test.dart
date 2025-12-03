@@ -1,5 +1,8 @@
 import 'package:test/test.dart';
 import 'package:wasmtime/wasmtime.dart';
+import 'package:wasmtime/src/val.dart';
+import 'package:wasmtime/src/types.dart';
+import 'package:wasmtime/src/trap.dart';
 
 void main() {
   late Engine engine;

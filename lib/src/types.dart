@@ -1,5 +1,5 @@
 import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
+
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
 // ignore_for_file: non_constant_identifier_names, constant_identifier_names
@@ -49,12 +49,20 @@ final class WasmtimeValUnion extends ffi.Union {
   external double f64;
 
   external WasmtimeRefStruct ref;
+  external WasmtimeV128 v128;
 
   // Ensure union is 24 bytes (size of anyref/externref)
   @ffi.Array(24)
   // Padding to ensure the union is 24 bytes, matching the C struct size.
   // ignore: unused_field
   external ffi.Array<ffi.Uint8> _padding;
+}
+
+final class WasmtimeV128 extends ffi.Struct {
+  @ffi.Uint64()
+  external int low;
+  @ffi.Uint64()
+  external int high;
 }
 
 final class WasmtimeRefStruct extends ffi.Struct {
@@ -114,91 +122,7 @@ final class WasmtimeVal extends ffi.Struct {
   external WasmtimeValUnion of;
 }
 
-class Val {
-  final ValKind kind;
-  final Object? value;
+// Val class moved to val.dart
 
-  Val.i32(int val) : kind = ValKind.i32, value = val;
-  Val.i64(int val) : kind = ValKind.i64, value = val;
-  Val.f32(double val) : kind = ValKind.f32, value = val;
-  Val.f64(double val) : kind = ValKind.f64, value = val;
-  // TODO: Implement ref types
-
-  static Val fromNative(WasmtimeVal native) {
-    final kind = ValKind.fromValue(native.kind);
-    switch (kind) {
-      case ValKind.i32:
-        return Val.i32(native.of.i32);
-      case ValKind.i64:
-        return Val.i64(native.of.i64);
-      case ValKind.f32:
-        return Val.f32(native.of.f32);
-      case ValKind.f64:
-        return Val.f64(native.of.f64);
-      default:
-        // TODO: Handle ref types
-        return Val.i32(0); // Placeholder
-    }
-  }
-
-  void toNative(ffi.Pointer<WasmtimeVal> ptr) {
-    ptr.ref.kind = kind.value;
-    switch (kind) {
-      case ValKind.i32:
-        ptr.ref.of.i32 = value as int;
-        break;
-      case ValKind.i64:
-        ptr.ref.of.i64 = value as int;
-        break;
-      case ValKind.f32:
-        ptr.ref.of.f32 = value as double;
-        break;
-      case ValKind.f64:
-        ptr.ref.of.f64 = value as double;
-        break;
-      default:
-        // TODO: Handle ref types
-        break;
-    }
-  }
-
-  @override
-  String toString() => 'Val($kind, $value)';
-}
-
-class Trap {
-  final ffi.Pointer<wasm_trap_t> _ptr;
-
-  Trap._(this._ptr);
-
-  factory Trap.fromPtr(ffi.Pointer<wasm_trap_t> ptr) => Trap._(ptr);
-
-  ffi.Pointer<wasm_trap_t> get ptr => _ptr;
-
-  String get message {
-    final byteVec = calloc<wasm_byte_vec_t>();
-    try {
-      wasm_trap_message(_ptr, byteVec);
-      // wasm_byte_vec_t has size and data.
-      // data is Pointer<Char>.
-      // We need to read it as string.
-      // The string might not be null-terminated?
-      // wasm_byte_vec_t usually contains a string that is not null-terminated but size is given.
-      // But wait, generated bindings for wasm_byte_vec_t:
-      // external int size;
-      // external ffi.Pointer<ffi.Char> data;
-      if (byteVec.ref.data == ffi.nullptr) return '';
-      final str = byteVec.ref.data.cast<ffi.Uint8>().asTypedList(
-        byteVec.ref.size,
-      );
-      return String.fromCharCodes(str); // Assuming UTF-8/ASCII? usually UTF-8.
-    } finally {
-      wasm_byte_vec_delete(byteVec);
-      calloc.free(byteVec);
-    }
-  }
-
-  void dispose() {
-    wasm_trap_delete(_ptr);
-  }
-}
+// Val class moved to val.dart
+// Trap class moved to trap.dart

@@ -38,6 +38,9 @@ external ffi.Pointer<wasm_engine_t> wasm_engine_new_with_config(
   ffi.Pointer<wasm_config_t> arg0,
 );
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_valtype_t>)>()
+external void wasm_valtype_delete(ffi.Pointer<wasm_valtype_t> arg0);
+
 @ffi.Native<ffi.Pointer<wasm_valtype_t> Function(ffi.Uint8)>()
 external ffi.Pointer<wasm_valtype_t> wasm_valtype_new(int arg0);
 
@@ -72,6 +75,18 @@ external ffi.Pointer<wasm_valtype_vec_t> wasm_functype_results(
   ffi.Pointer<wasm_functype_t> arg0,
 );
 
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_frame_vec_t>)>()
+external void wasm_frame_vec_delete(ffi.Pointer<wasm_frame_vec_t> arg0);
+
+@ffi.Native<ffi.Uint32 Function(ffi.Pointer<wasm_frame_t>)>()
+external int wasm_frame_func_index(ffi.Pointer<wasm_frame_t> arg0);
+
+@ffi.Native<ffi.Size Function(ffi.Pointer<wasm_frame_t>)>()
+external int wasm_frame_func_offset(ffi.Pointer<wasm_frame_t> arg0);
+
+@ffi.Native<ffi.Size Function(ffi.Pointer<wasm_frame_t>)>()
+external int wasm_frame_module_offset(ffi.Pointer<wasm_frame_t> arg0);
+
 @ffi.Native<ffi.Void Function(ffi.Pointer<wasm_trap_t>)>()
 external void wasm_trap_delete(ffi.Pointer<wasm_trap_t> arg0);
 
@@ -92,6 +107,14 @@ external ffi.Pointer<wasm_trap_t> wasm_trap_new(
 external void wasm_trap_message(
   ffi.Pointer<wasm_trap_t> arg0,
   ffi.Pointer<wasm_byte_vec_t> out,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<wasm_trap_t>, ffi.Pointer<wasm_frame_vec_t>)
+>()
+external void wasm_trap_trace(
+  ffi.Pointer<wasm_trap_t> arg0,
+  ffi.Pointer<wasm_frame_vec_t> out,
 );
 
 /// \brief Increments the engine-local epoch variable.
@@ -223,6 +246,95 @@ external void wasmtime_context_gc(ffi.Pointer<wasmtime_context> context);
 /// \brief Deletes a #wasmtime_extern_t.
 @ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_extern>)>()
 external void wasmtime_extern_delete(ffi.Pointer<wasmtime_extern> val);
+
+/// \brief Create a new `externref` value.
+///
+/// Creates a new `externref` value wrapping the provided data, returning whether
+/// it was created or not.
+///
+/// \param context the store context to allocate this externref within
+/// \param data the host-specific data to wrap
+/// \param finalizer an optional finalizer for `data`
+/// \param out where to store the created value.
+///
+/// When the reference is reclaimed, the wrapped data is cleaned up with the
+/// provided `finalizer`.
+///
+/// If `true` is returned then `out` has been filled in and must be unrooted
+/// in the future with #wasmtime_externref_unroot. If `false` is returned then
+/// the host wasn't able to create more GC values at this time. Performing a GC
+/// may free up enough space to try again.
+///
+/// If you do not unroot the value, *even if you free the corresponding
+/// Store*, there will be some memory leaked, because GC roots use a
+/// separate allocation to track liveness.
+@ffi.Native<
+  ffi.Bool Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+    ffi.Pointer<wasmtime_externref>,
+  )
+>()
+external bool wasmtime_externref_new(
+  ffi.Pointer<wasmtime_context> context,
+  ffi.Pointer<ffi.Void> data,
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+  finalizer,
+  ffi.Pointer<wasmtime_externref> out,
+);
+
+/// \brief Get an `externref`'s wrapped data
+///
+/// Returns the original `data` passed to #wasmtime_externref_new. It is required
+/// that `data` is not `NULL`.
+@ffi.Native<
+  ffi.Pointer<ffi.Void> Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasmtime_externref>,
+  )
+>()
+external ffi.Pointer<ffi.Void> wasmtime_externref_data(
+  ffi.Pointer<wasmtime_context> context,
+  ffi.Pointer<wasmtime_externref> data,
+);
+
+/// \brief Converts a raw `externref` value coming from #wasmtime_val_raw_t into
+/// a #wasmtime_externref_t.
+///
+/// The `out` reference is filled in with the non-raw version of this externref.
+/// It must eventually be unrooted with #wasmtime_externref_unroot.
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Uint32,
+    ffi.Pointer<wasmtime_externref>,
+  )
+>()
+external void wasmtime_externref_from_raw(
+  ffi.Pointer<wasmtime_context> context,
+  int raw,
+  ffi.Pointer<wasmtime_externref> out,
+);
+
+/// \brief Converts a #wasmtime_externref_t to a raw value suitable for storing
+/// into a #wasmtime_val_raw_t.
+///
+/// Note that the returned underlying value is not tracked by Wasmtime's garbage
+/// collector until it enters WebAssembly. This means that a GC may release the
+/// context's reference to the raw value, making the raw value invalid within the
+/// context of the store. Do not perform a GC between calling this function and
+/// passing it to WebAssembly.
+@ffi.Native<
+  ffi.Uint32 Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasmtime_externref>,
+  )
+>()
+external int wasmtime_externref_to_raw(
+  ffi.Pointer<wasmtime_context> context,
+  ffi.Pointer<wasmtime_externref> ref,
+);
 
 /// \brief Creates a new host-defined function.
 ///
@@ -755,6 +867,28 @@ external bool wasmtime_trap_code(
   ffi.Pointer<ffi.Uint8> code,
 );
 
+/// \brief Returns a human-readable name for this frame's function.
+///
+/// This function will attempt to load a human-readable name for function this
+/// frame points to. This function may return `NULL`.
+///
+/// The lifetime of the returned name is the same as the #wasm_frame_t itself.
+@ffi.Native<ffi.Pointer<wasm_byte_vec_t> Function(ffi.Pointer<wasm_frame_t>)>()
+external ffi.Pointer<wasm_byte_vec_t> wasmtime_frame_func_name(
+  ffi.Pointer<wasm_frame_t> arg0,
+);
+
+/// \brief Returns a human-readable name for this frame's module.
+///
+/// This function will attempt to load a human-readable name for module this
+/// frame points to. This function may return `NULL`.
+///
+/// The lifetime of the returned name is the same as the #wasm_frame_t itself.
+@ffi.Native<ffi.Pointer<wasm_byte_vec_t> Function(ffi.Pointer<wasm_frame_t>)>()
+external ffi.Pointer<wasm_byte_vec_t> wasmtime_frame_module_name(
+  ffi.Pointer<wasm_frame_t> arg0,
+);
+
 /// \brief Converts from the text format of WebAssembly to the binary format.
 ///
 /// \param wat this it the input pointer with the WebAssembly Text Format inside
@@ -824,6 +958,15 @@ final class wasm_val_t extends ffi.Struct {
   external int kind;
 
   external UnnamedUnion of;
+}
+
+final class wasm_frame_t extends ffi.Opaque {}
+
+final class wasm_frame_vec_t extends ffi.Struct {
+  @ffi.Size()
+  external int size;
+
+  external ffi.Pointer<ffi.Pointer<wasm_frame_t>> data;
 }
 
 final class wasm_trap_t extends ffi.Opaque {}
@@ -977,6 +1120,27 @@ final class wasmtime_extern extends ffi.Struct {
   /// Container for the extern item's value.
   external wasmtime_extern_union of;
 }
+
+/// \typedef wasmtime_externref_t
+/// \brief Convenience alias for #wasmtime_externref
+///
+/// \struct wasmtime_externref
+/// \brief A host-defined un-forgeable reference to pass into WebAssembly.
+///
+/// This structure represents an `externref` that can be passed to WebAssembly.
+/// It cannot be forged by WebAssembly itself and is guaranteed to have been
+/// created by the host.
+///
+/// This structure is similar to #wasmtime_anyref_t but represents the
+/// `externref` type in WebAssembly. This can be created on the host from
+/// arbitrary host pointers/destructors. Note that this value is itself a
+/// reference into a #wasmtime_context_t and must be explicitly unrooted to
+/// enable garbage collection.
+///
+/// Note that null is represented with this structure and created with
+/// `wasmtime_externref_set_null`. Null can be tested for with the
+/// `wasmtime_externref_is_null` function.
+final class wasmtime_externref extends ffi.Opaque {}
 
 /// \typedef wasmtime_val_t
 /// \brief Convenience alias for #wasmtime_val_t

@@ -2,12 +2,14 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/store.dart';
 import 'package:wasmtime/src/types.dart';
+import 'package:wasmtime/src/val.dart';
+import 'package:wasmtime/src/trap.dart';
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
 class Func {
-  final ffi.Pointer<wasmtime_func> _ptr;
+  final ffi.Pointer<wasmtime_func> ptr;
 
-  Func._(this._ptr);
+  Func._(this.ptr);
 
   static Func fromNative(WasmtimeFuncStruct native) {
     final ptr = calloc<wasmtime_func>();
@@ -18,7 +20,7 @@ class Func {
   }
 
   void dispose() {
-    calloc.free(_ptr);
+    calloc.free(ptr);
   }
 
   // TODO: Implement from (creating host function)
@@ -30,7 +32,7 @@ class Func {
       args[i].toNative((argsPtr + i));
     }
 
-    final funcTypePtr = wasmtime_func_type(store.context, _ptr);
+    final funcTypePtr = wasmtime_func_type(store.context, ptr);
     final resultsTypePtr = wasm_functype_results(
       funcTypePtr,
     ).cast<WasmValTypeVec>();
@@ -41,7 +43,7 @@ class Func {
     try {
       final error = wasmtime_func_call(
         store.context,
-        _ptr,
+        ptr,
         argsPtr.cast(),
         nargs,
         resultsPtr.cast(),

@@ -11,5 +11,7 @@ export 'src/linker.dart';
 export 'src/func.dart';
 export 'src/instance.dart';
 export 'src/types.dart';
+export 'src/val.dart';
+export 'src/trap.dart';
 
 // TODO: Export any libraries intended for clients of this package.
