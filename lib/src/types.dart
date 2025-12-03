@@ -2,6 +2,9 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
+// ignore_for_file: non_constant_identifier_names, constant_identifier_names
+// We use C-style naming for FFI structs and constants to match the Wasmtime C API.
+
 const int WASMTIME_I32 = 0;
 const int WASMTIME_I64 = 1;
 const int WASMTIME_F32 = 2;
@@ -49,6 +52,8 @@ final class WasmtimeValUnion extends ffi.Union {
 
   // Ensure union is 24 bytes (size of anyref/externref)
   @ffi.Array(24)
+  // Padding to ensure the union is 24 bytes, matching the C struct size.
+  // ignore: unused_field
   external ffi.Array<ffi.Uint8> _padding;
 }
 
@@ -77,6 +82,8 @@ final class WasmtimeExternUnion extends ffi.Union {
 
   // Ensure union is 24 bytes (size of global/table/memory/anyref)
   @ffi.Array(24)
+  // Padding to ensure the union is 24 bytes, matching the C struct size.
+  // ignore: unused_field
   external ffi.Array<ffi.Uint8> _padding;
 }
 
@@ -86,6 +93,8 @@ final class WasmtimeExtern extends ffi.Struct {
 
   // Padding to align 'of' to 8 bytes.
   @ffi.Array(7)
+  // Padding to align 'of' to 8 bytes.
+  // ignore: unused_field
   external ffi.Array<ffi.Uint8> _padding;
 
   external WasmtimeExternUnion of;
@@ -98,6 +107,8 @@ final class WasmtimeVal extends ffi.Struct {
   // Padding to align 'of' to 8 bytes.
   // kind is 1 byte. We need 7 bytes padding.
   @ffi.Array(7)
+  // Padding to align 'of' to 8 bytes.
+  // ignore: unused_field
   external ffi.Array<ffi.Uint8> _padding;
 
   external WasmtimeValUnion of;

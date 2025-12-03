@@ -1,7 +1,5 @@
 import 'package:test/test.dart';
 import 'package:wasmtime/wasmtime.dart';
-import 'package:wasmtime/src/linker.dart';
-import 'package:wasmtime/src/instance.dart';
 
 void main() {
   late Engine engine;
@@ -41,6 +39,7 @@ void main() {
     final instance = linker.instantiate(store, emptyModule);
 
     // Clean up
+    instance.dispose();
     module.dispose();
     emptyModule.dispose();
   });

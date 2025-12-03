@@ -27,7 +27,7 @@ class Func {
     final nargs = args.length;
     final argsPtr = calloc<WasmtimeVal>(nargs);
     for (var i = 0; i < nargs; i++) {
-      args[i].toNative(argsPtr.elementAt(i));
+      args[i].toNative((argsPtr + i));
     }
 
     final funcTypePtr = wasmtime_func_type(store.context, _ptr);
@@ -61,7 +61,7 @@ class Func {
 
       final results = <Val>[];
       for (var i = 0; i < nresults; i++) {
-        results.add(Val.fromNative(resultsPtr.elementAt(i).ref));
+        results.add(Val.fromNative((resultsPtr + i).ref));
       }
       return results;
     } finally {
