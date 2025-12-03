@@ -59,7 +59,7 @@ void main() {
       final instance = linker.instantiate(store, module);
 
       // Get the exported 'run' function
-      final run = instance.getExport(store, 'run')?.func;
+      final run = instance.getExport(store, 'run')?.asFunc;
 
       if (run == null) {
         throw Exception('Export "run" not found');
