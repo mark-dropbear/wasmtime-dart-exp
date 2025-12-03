@@ -58,6 +58,8 @@ class Module {
   }
 
   late final ffi.Pointer<wasmtime_module> _ptr;
+
+  /// Returns the native pointer to the module.
   ffi.Pointer<wasmtime_module> get ptr => _ptr;
   bool _isDisposed = false;
 

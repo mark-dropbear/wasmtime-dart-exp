@@ -1,17 +1,21 @@
 import 'dart:ffi' as ffi;
+
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/store.dart';
+import 'package:wasmtime/src/third_party/wasmtime.g.dart';
+import 'package:wasmtime/src/trap.dart';
 import 'package:wasmtime/src/types.dart';
 import 'package:wasmtime/src/val.dart';
-import 'package:wasmtime/src/trap.dart';
-import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
+/// Represents a WebAssembly function.
 class Func {
+  /// The native pointer to the function.
   final ffi.Pointer<wasmtime_func> ptr;
 
   Func._(this.ptr);
 
-  static Func fromNative(WasmtimeFuncStruct native) {
+  /// Creates a [Func] from a native [WasmtimeFuncStruct].
+  factory Func.fromNative(WasmtimeFuncStruct native) {
     final ptr = calloc<wasmtime_func>();
     final customPtr = ptr.cast<WasmtimeFuncStruct>();
     customPtr.ref.store_id = native.store_id;
@@ -19,17 +23,19 @@ class Func {
     return Func._(ptr);
   }
 
+  /// Disposes of the [Func].
   void dispose() {
     calloc.free(ptr);
   }
 
   // TODO: Implement from (creating host function)
 
+  /// Calls the function with the given arguments.
   List<Val> call(Store store, List<Val> args) {
     final nargs = args.length;
     final argsPtr = calloc<WasmtimeVal>(nargs);
     for (var i = 0; i < nargs; i++) {
-      args[i].toNative((argsPtr + i));
+      args[i].toNative(argsPtr + i);
     }
 
     final funcTypePtr = wasmtime_func_type(store.context, ptr);

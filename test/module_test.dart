@@ -15,7 +15,7 @@ void main() {
     });
 
     test('can be created from text', () {
-      const wat = r'''
+      const wat = '''
         (module
           (func (export "run"))
         )

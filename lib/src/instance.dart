@@ -1,19 +1,24 @@
 import 'dart:ffi' as ffi;
-import 'package:ffi/ffi.dart';
-import 'package:wasmtime/src/store.dart';
-import 'package:wasmtime/src/extern.dart';
-import 'package:wasmtime/src/types.dart';
-import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
+import 'package:ffi/ffi.dart';
+import 'package:wasmtime/src/extern.dart';
+import 'package:wasmtime/src/store.dart';
+import 'package:wasmtime/src/third_party/wasmtime.g.dart';
+import 'package:wasmtime/src/types.dart';
+
+/// Represents a WebAssembly instance.
 class Instance {
   final ffi.Pointer<wasmtime_instance> _ptr;
 
+  /// Creates an [Instance] from a raw pointer.
   Instance.fromPtr(this._ptr);
 
+  /// Disposes of the [Instance].
   void dispose() {
     calloc.free(_ptr);
   }
 
+  /// Retrieves an exported item from the instance by name.
   Extern? getExport(Store store, String name) {
     final namePtr = name.toNativeUtf8();
     final itemPtr = calloc<WasmtimeExtern>();

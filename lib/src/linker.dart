@@ -1,19 +1,23 @@
 import 'dart:ffi' as ffi;
+
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/engine.dart';
-import 'package:wasmtime/src/store.dart';
-import 'package:wasmtime/src/module.dart';
 import 'package:wasmtime/src/instance.dart';
+import 'package:wasmtime/src/module.dart';
+import 'package:wasmtime/src/store.dart';
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
+/// A linker for WebAssembly modules.
 class Linker {
   late final ffi.Pointer<wasmtime_linker> _ptr;
   bool _isDisposed = false;
 
+  /// Creates a new [Linker] for the given [Engine].
   Linker(Engine engine) {
     _ptr = wasmtime_linker_new(engine.ptr);
   }
 
+  /// Disposes of the [Linker].
   void dispose() {
     if (!_isDisposed) {
       wasmtime_linker_delete(_ptr);
@@ -21,10 +25,12 @@ class Linker {
     }
   }
 
-  void allowShadowing(bool allow) {
+  /// Configures whether shadowing is allowed in the linker.
+  void allowShadowing({required bool allow}) {
     wasmtime_linker_allow_shadowing(_ptr, allow);
   }
 
+  /// Defines a module in the linker with the given name.
   void defineModule(Store store, String name, Module module) {
     final namePtr = name.toNativeUtf8();
     try {
@@ -44,6 +50,7 @@ class Linker {
     }
   }
 
+  /// Defines WASI functions in the linker.
   void defineWasi() {
     final error = wasmtime_linker_define_wasi(_ptr);
     if (error != ffi.nullptr) {
@@ -52,6 +59,7 @@ class Linker {
     }
   }
 
+  /// Instantiates a module using the linker.
   Instance instantiate(Store store, Module module) {
     // wasmtime_instance_t is 16 bytes on 64-bit (uint64_t + size_t).
     // We allocate enough space for it.

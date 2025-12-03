@@ -1,10 +1,12 @@
 import 'dart:ffi' as ffi;
+import 'package:wasmtime/src/engine.dart';
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
 /// Represents a Wasmtime configuration.
 ///
 /// A [Config] object is used to configure an [Engine].
 class Config {
+  /// Creates a new [Config] with default settings.
   Config() : _ptr = wasm_config_new() {
     if (_ptr == ffi.nullptr) {
       throw Exception('Failed to create wasm_config_t');
@@ -32,5 +34,6 @@ class Config {
     _isDisposed = true;
   }
 
+  /// Returns the native pointer to the configuration.
   ffi.Pointer<wasm_config_t> get ptr => _ptr;
 }

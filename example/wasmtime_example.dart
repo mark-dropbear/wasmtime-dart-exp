@@ -1,3 +1,6 @@
+// Examples use print to show output.
+// ignore_for_file: avoid_print
+
 import 'package:wasmtime/wasmtime.dart';
 
 void main() {

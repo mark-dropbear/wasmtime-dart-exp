@@ -1,8 +1,5 @@
 import 'package:test/test.dart';
 import 'package:wasmtime/wasmtime.dart';
-import 'package:wasmtime/src/val.dart';
-import 'package:wasmtime/src/types.dart';
-import 'package:wasmtime/src/trap.dart';
 
 void main() {
   late Engine engine;
@@ -22,7 +19,7 @@ void main() {
   });
 
   test('can call function', () {
-    const wat = r'''
+    const wat = '''
       (module
         (func (export "add") (param i32 i32) (result i32)
           local.get 0
@@ -50,7 +47,7 @@ void main() {
   });
 
   test('handles traps', () {
-    const wat = r'''
+    const wat = '''
       (module
         (func (export "trap")
           unreachable

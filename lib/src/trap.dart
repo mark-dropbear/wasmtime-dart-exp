@@ -2,22 +2,51 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
+/// Represents the code of a trap.
 enum TrapCode {
+  /// Stack overflow.
   stackOverflow,
+
+  /// Memory out of bounds.
   memoryOutOfBounds,
+
+  /// Heap misaligned.
   heapMisaligned,
+
+  /// Table out of bounds.
   tableOutOfBounds,
+
+  /// Indirect call to null.
   indirectCallToNull,
+
+  /// Bad signature.
   badSignature,
+
+  /// Integer overflow.
   integerOverflow,
+
+  /// Integer division by zero.
   integerDivisionByZero,
+
+  /// Bad conversion to integer.
   badConversionToInteger,
+
+  /// Unreachable code.
   unreachableCode,
+
+  /// Interrupt.
   interrupt,
+
+  /// Always trap adapter.
   alwaysTrapAdapter,
+
+  /// Out of fuel.
   outOfFuel,
+
+  /// Unknown trap code.
   unknown;
 
+  /// Creates a [TrapCode] from a native value.
   static TrapCode fromValue(int value) {
     // These values must match wasmtime_trap_code_enum in wasmtime.h
     // The C enum is 0-indexed.
@@ -28,11 +57,21 @@ enum TrapCode {
   }
 }
 
+/// Represents a frame in a trap trace.
 class Frame {
+  /// The function index in the module.
   final int funcIndex;
+
+  /// The offset of the instruction in the function.
   final int funcOffset;
+
+  /// The offset of the instruction in the module.
   final int moduleOffset;
+
+  /// The name of the function, if available.
   final String? funcName;
+
+  /// The name of the module, if available.
   final String? moduleName;
 
   Frame._({
@@ -49,15 +88,19 @@ class Frame {
   }
 }
 
+/// Represents a WebAssembly trap.
 class Trap {
   final ffi.Pointer<wasm_trap_t> _ptr;
 
   Trap._(this._ptr);
 
+  /// Creates a [Trap] from a raw pointer.
   factory Trap.fromPtr(ffi.Pointer<wasm_trap_t> ptr) => Trap._(ptr);
 
+  /// Returns the raw pointer to the trap.
   ffi.Pointer<wasm_trap_t> get ptr => _ptr;
 
+  /// Returns the trap message.
   String get message {
     final byteVec = calloc<wasm_byte_vec_t>();
     try {
@@ -73,6 +116,7 @@ class Trap {
     }
   }
 
+  /// Returns the trap code, if any.
   TrapCode? get code {
     final codePtr = calloc<ffi.Uint8>();
     try {
@@ -85,6 +129,7 @@ class Trap {
     }
   }
 
+  /// Returns the frames in the trap trace.
   List<Frame> get frames {
     final vec = calloc<wasm_frame_vec_t>();
     try {
@@ -131,6 +176,7 @@ class Trap {
     }
   }
 
+  /// Disposes of the [Trap].
   void dispose() {
     wasm_trap_delete(_ptr);
   }

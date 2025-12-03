@@ -1,15 +1,22 @@
 import 'dart:ffi' as ffi;
+
 import 'package:ffi/ffi.dart';
-import 'package:wasmtime/src/types.dart';
-import 'package:wasmtime/src/third_party/wasmtime.g.dart';
+import 'package:meta/meta.dart';
 import 'package:wasmtime/src/func.dart';
-
 import 'package:wasmtime/src/store.dart';
+import 'package:wasmtime/src/third_party/wasmtime.g.dart';
+import 'package:wasmtime/src/types.dart';
 
+/// A 128-bit vector value.
+@immutable
 class V128 {
+  /// The low 64 bits of the vector.
   final int low;
+
+  /// The high 64 bits of the vector.
   final int high;
 
+  /// Creates a new [V128] value.
   const V128(this.low, this.high);
 
   @override
@@ -28,15 +35,19 @@ class V128 {
       'V128(0x${low.toRadixString(16)}, 0x${high.toRadixString(16)})';
 }
 
+/// Represents the type of a WebAssembly value.
 class ValType {
   final ffi.Pointer<wasm_valtype_t> _ptr;
 
   ValType._(this._ptr);
 
+  /// Creates a [ValType] from a raw pointer.
   factory ValType.fromPtr(ffi.Pointer<wasm_valtype_t> ptr) => ValType._(ptr);
 
+  /// Returns the [ValKind] of this type.
   ValKind get kind => ValKind.fromValue(wasm_valtype_kind(_ptr));
 
+  /// Disposes of the [ValType].
   void dispose() {
     wasm_valtype_delete(_ptr);
   }
@@ -45,23 +56,41 @@ class ValType {
   String toString() => kind.toString();
 }
 
+/// Represents a WebAssembly value.
 class Val {
+  /// The kind of the value.
   final ValKind kind;
+
+  /// The underlying value.
   final Object? value;
 
   // Registry to pin Dart objects passed as externref
   static final Map<int, Object> _externRefRegistry = {};
   static int _nextExternRefId = 1;
 
+  /// Creates an i32 value.
   Val.i32(int val) : kind = ValKind.i32, value = val;
+
+  /// Creates an i64 value.
   Val.i64(int val) : kind = ValKind.i64, value = val;
+
+  /// Creates an f32 value.
   Val.f32(double val) : kind = ValKind.f32, value = val;
+
+  /// Creates an f64 value.
   Val.f64(double val) : kind = ValKind.f64, value = val;
+
+  /// Creates a v128 value.
   Val.v128(V128 val) : kind = ValKind.v128, value = val;
+
+  /// Creates a funcref value.
   Val.funcref(Func? val) : kind = ValKind.funcref, value = val;
+
+  /// Creates an externref value.
   Val.externref(Object? val) : kind = ValKind.externref, value = val;
 
-  static Val fromNative(WasmtimeVal native) {
+  /// Creates a [Val] from a native [WasmtimeVal] struct.
+  factory Val.fromNative(WasmtimeVal native) {
     final kind = ValKind.fromValue(native.kind);
     switch (kind) {
       case ValKind.i32:
@@ -118,8 +147,9 @@ class Val {
     }
   }
 
-  // Updated signature to take Store for externref resolution
-  static Val fromNativeWithStore(Store store, WasmtimeVal native) {
+  /// Creates a [Val] from a native [WasmtimeVal] struct, using the provided [Store] for context.
+  // ignore: avoid_unused_constructor_parameters
+  factory Val.fromNativeWithStore(Store store, WasmtimeVal native) {
     final kind = ValKind.fromValue(native.kind);
     if (kind == ValKind.externref) {
       if (native.of.ref.store_id == 0) return Val.externref(null);
@@ -130,29 +160,25 @@ class Val {
       // Let's change `fromNative` to take `Pointer<WasmtimeVal>`.
       return Val.externref(null); // TODO: Implement
     }
-    return fromNative(native);
+    return Val.fromNative(native);
   }
 
+  /// Converts this value to a native [WasmtimeVal] struct.
   void toNative(ffi.Pointer<WasmtimeVal> ptr, {Store? store}) {
     ptr.ref.kind = kind.value;
     switch (kind) {
       case ValKind.i32:
         ptr.ref.of.i32 = value as int;
-        break;
       case ValKind.i64:
         ptr.ref.of.i64 = value as int;
-        break;
       case ValKind.f32:
         ptr.ref.of.f32 = value as double;
-        break;
       case ValKind.f64:
         ptr.ref.of.f64 = value as double;
-        break;
       case ValKind.v128:
         final v = value as V128;
         ptr.ref.of.v128.low = v.low;
         ptr.ref.of.v128.high = v.high;
-        break;
       case ValKind.funcref:
         final f = value as Func?;
         if (f != null) {
@@ -169,7 +195,6 @@ class Val {
           ptr.ref.of.ref.store_id = 0;
           ptr.ref.of.ref.index = 0;
         }
-        break;
       case ValKind.externref:
         if (store == null) throw ArgumentError('Store required for externref');
         final val = value;
@@ -201,7 +226,6 @@ class Val {
           ptr.ref.of.ref.store_id = 0;
           ptr.ref.of.ref.index = 0;
         }
-        break;
       default:
         throw ArgumentError('Unknown ValKind: $kind');
     }

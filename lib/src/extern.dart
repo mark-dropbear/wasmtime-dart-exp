@@ -5,18 +5,22 @@ import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 
 import 'package:wasmtime/src/types.dart';
 
+/// Represents an external item (function, global, table, or memory).
 class Extern {
   final ffi.Pointer<WasmtimeExtern> _ptr;
 
   Extern._(this._ptr);
 
-  static Extern fromNative(ffi.Pointer<WasmtimeExtern> ptr) => Extern._(ptr);
+  /// Creates an [Extern] from a raw pointer.
+  factory Extern.fromNative(ffi.Pointer<WasmtimeExtern> ptr) => Extern._(ptr);
 
+  /// Disposes of the [Extern].
   void dispose() {
     wasmtime_extern_delete(_ptr.cast());
     calloc.free(_ptr);
   }
 
+  /// Returns the extern as a [Func], or null if it is not a function.
   Func? get asFunc {
     // WASMTIME_EXTERN_FUNC = 0
     if (_ptr.ref.kind == 0) {

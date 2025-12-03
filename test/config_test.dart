@@ -1,5 +1,5 @@
-import 'package:wasmtime/src/config.dart';
 import 'package:test/test.dart';
+import 'package:wasmtime/src/config.dart';
 
 void main() {
   group('Config', () {

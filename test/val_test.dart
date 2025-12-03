@@ -1,7 +1,5 @@
 import 'package:test/test.dart';
 import 'package:wasmtime/wasmtime.dart';
-import 'package:wasmtime/src/val.dart';
-import 'package:wasmtime/src/types.dart';
 
 void main() {
   late Engine engine;
@@ -23,10 +21,10 @@ void main() {
     expect(val.value, 123);
   });
 
-  test('Val.i64', () {
-    final val = Val.i64(1234567890);
+  test('i64', () {
+    final val = Val.i64(BigInt.parse('1234567890123456789').toInt());
     expect(val.kind, ValKind.i64);
-    expect(val.value, 1234567890);
+    expect(val.value, BigInt.parse('1234567890123456789').toInt());
   });
 
   test('Val.f32', () {
@@ -42,7 +40,10 @@ void main() {
   });
 
   test('Val.v128', () {
-    final v128 = V128(0x1234567890ABCDEF, 0xFEDCBA0987654321);
+    final v128 = V128(
+      BigInt.parse('0x1234567890ABCDEF').toInt(),
+      BigInt.parse('0x1EDCBA0987654321').toInt(),
+    );
     final val = Val.v128(v128);
     expect(val.kind, ValKind.v128);
     expect(val.value, v128);
