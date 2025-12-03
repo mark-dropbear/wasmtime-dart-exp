@@ -38,6 +38,62 @@ external ffi.Pointer<wasm_engine_t> wasm_engine_new_with_config(
   ffi.Pointer<wasm_config_t> arg0,
 );
 
+@ffi.Native<ffi.Pointer<wasm_valtype_t> Function(ffi.Uint8)>()
+external ffi.Pointer<wasm_valtype_t> wasm_valtype_new(int arg0);
+
+@ffi.Native<ffi.Uint8 Function(ffi.Pointer<wasm_valtype_t>)>()
+external int wasm_valtype_kind(ffi.Pointer<wasm_valtype_t> arg0);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_functype_t>)>()
+external void wasm_functype_delete(ffi.Pointer<wasm_functype_t> arg0);
+
+@ffi.Native<
+  ffi.Pointer<wasm_functype_t> Function(
+    ffi.Pointer<wasm_valtype_vec_t>,
+    ffi.Pointer<wasm_valtype_vec_t>,
+  )
+>()
+external ffi.Pointer<wasm_functype_t> wasm_functype_new(
+  ffi.Pointer<wasm_valtype_vec_t> params,
+  ffi.Pointer<wasm_valtype_vec_t> results,
+);
+
+@ffi.Native<
+  ffi.Pointer<wasm_valtype_vec_t> Function(ffi.Pointer<wasm_functype_t>)
+>()
+external ffi.Pointer<wasm_valtype_vec_t> wasm_functype_params(
+  ffi.Pointer<wasm_functype_t> arg0,
+);
+
+@ffi.Native<
+  ffi.Pointer<wasm_valtype_vec_t> Function(ffi.Pointer<wasm_functype_t>)
+>()
+external ffi.Pointer<wasm_valtype_vec_t> wasm_functype_results(
+  ffi.Pointer<wasm_functype_t> arg0,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_trap_t>)>()
+external void wasm_trap_delete(ffi.Pointer<wasm_trap_t> arg0);
+
+@ffi.Native<
+  ffi.Pointer<wasm_trap_t> Function(
+    ffi.Pointer<wasm_store_t>,
+    ffi.Pointer<wasm_byte_vec_t>,
+  )
+>()
+external ffi.Pointer<wasm_trap_t> wasm_trap_new(
+  ffi.Pointer<wasm_store_t> store,
+  ffi.Pointer<wasm_byte_vec_t> arg1,
+);
+
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<wasm_trap_t>, ffi.Pointer<wasm_byte_vec_t>)
+>()
+external void wasm_trap_message(
+  ffi.Pointer<wasm_trap_t> arg0,
+  ffi.Pointer<wasm_byte_vec_t> out,
+);
+
 /// \brief Increments the engine-local epoch variable.
 ///
 /// This function will increment the engine's current epoch which can be used to
@@ -164,6 +220,541 @@ external ffi.Pointer<ffi.Void> wasmtime_context_get_data(
 @ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_context>)>()
 external void wasmtime_context_gc(ffi.Pointer<wasmtime_context> context);
 
+/// \brief Deletes a #wasmtime_extern_t.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_extern>)>()
+external void wasmtime_extern_delete(ffi.Pointer<wasmtime_extern> val);
+
+/// \brief Creates a new host-defined function.
+///
+/// Inserts a host-defined function into the `store` provided which can be used
+/// to then instantiate a module with or define within a #wasmtime_linker_t.
+///
+/// \param store the store in which to create the function
+/// \param type the wasm type of the function that's being created
+/// \param callback the host-defined callback to invoke
+/// \param env host-specific data passed to the callback invocation, can be
+/// `NULL`
+/// \param finalizer optional finalizer for `env`, can be `NULL`
+/// \param ret the #wasmtime_func_t return value to be filled in.
+///
+/// The returned function can only be used with the specified `store`.
+@ffi.Native<
+  ffi.Void Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasm_functype_t>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Pointer<wasm_trap_t> Function(
+          ffi.Pointer<ffi.Void> env,
+          ffi.Pointer<wasmtime_caller> caller,
+          ffi.Pointer<wasmtime_val> args,
+          ffi.Size nargs,
+          ffi.Pointer<wasmtime_val> results,
+          ffi.Size nresults,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+    ffi.Pointer<wasmtime_func>,
+  )
+>()
+external void wasmtime_func_new(
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<wasm_functype_t> type,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<wasm_trap_t> Function(
+        ffi.Pointer<ffi.Void> env,
+        ffi.Pointer<wasmtime_caller> caller,
+        ffi.Pointer<wasmtime_val> args,
+        ffi.Size nargs,
+        ffi.Pointer<wasmtime_val> results,
+        ffi.Size nresults,
+      )
+    >
+  >
+  callback,
+  ffi.Pointer<ffi.Void> env,
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+  finalizer,
+  ffi.Pointer<wasmtime_func> ret,
+);
+
+/// \brief Returns the type of the function specified
+///
+/// The returned #wasm_functype_t is owned by the caller.
+@ffi.Native<
+  ffi.Pointer<wasm_functype_t> Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasmtime_func>,
+  )
+>()
+external ffi.Pointer<wasm_functype_t> wasmtime_func_type(
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<wasmtime_func> func,
+);
+
+/// \brief Call a WebAssembly function.
+///
+/// This function is used to invoke a function defined within a store. For
+/// example this might be used after extracting a function from a
+/// #wasmtime_instance_t.
+///
+/// \param store the store which owns `func`
+/// \param func the function to call
+/// \param args the arguments to the function call
+/// \param nargs the number of arguments provided
+/// \param results where to write the results of the function call
+/// \param nresults the number of results expected
+/// \param trap where to store a trap, if one happens.
+///
+/// There are three possible return states from this function:
+///
+/// 1. The returned error is non-null. This means `results`
+/// wasn't written to and `trap` will have `NULL` written to it. This state
+/// means that programmer error happened when calling the function, for
+/// example when the size of the arguments/results was wrong, the types of the
+/// arguments were wrong, or arguments may come from the wrong store.
+/// 2. The trap pointer is filled in. This means the returned error is `NULL` and
+/// `results` was not written to. This state means that the function was
+/// executing but hit a wasm trap while executing.
+/// 3. The error and trap returned are both `NULL` and `results` are written to.
+/// This means that the function call succeeded and the specified results were
+/// produced.
+///
+/// The `trap` pointer cannot be `NULL`. The `args` and `results` pointers may be
+/// `NULL` if the corresponding length is zero.
+///
+/// Does not take ownership of #wasmtime_val_t arguments. Gives ownership of
+/// #wasmtime_val_t results.
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasmtime_func>,
+    ffi.Pointer<wasmtime_val>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_val>,
+    ffi.Size,
+    ffi.Pointer<ffi.Pointer<wasm_trap_t>>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_func_call(
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<wasmtime_func> func,
+  ffi.Pointer<wasmtime_val> args,
+  int nargs,
+  ffi.Pointer<wasmtime_val> results,
+  int nresults,
+  ffi.Pointer<ffi.Pointer<wasm_trap_t>> trap,
+);
+
+/// \brief Loads a #wasmtime_extern_t from the caller's context
+///
+/// This function will attempt to look up the export named `name` on the caller
+/// instance provided. If it is found then the #wasmtime_extern_t for that is
+/// returned, otherwise `NULL` is returned.
+///
+/// Note that this only works for exported memories right now for WASI
+/// compatibility.
+///
+/// \param caller the caller object to look up the export from
+/// \param name the name that's being looked up
+/// \param name_len the byte length of `name`
+/// \param item where to store the return value
+///
+/// Returns a nonzero value if the export was found, or 0 if the export wasn't
+/// found. If the export wasn't found then `item` isn't written to.
+@ffi.Native<
+  ffi.Bool Function(
+    ffi.Pointer<wasmtime_caller>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_extern>,
+  )
+>()
+external bool wasmtime_caller_export_get(
+  ffi.Pointer<wasmtime_caller> caller,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_extern> item,
+);
+
+/// \brief Returns the store context of the caller object.
+@ffi.Native<
+  ffi.Pointer<wasmtime_context> Function(ffi.Pointer<wasmtime_caller>)
+>()
+external ffi.Pointer<wasmtime_context> wasmtime_caller_context(
+  ffi.Pointer<wasmtime_caller> caller,
+);
+
+/// \brief Get an export by name from an instance.
+///
+/// \param store the store that owns `instance`
+/// \param instance the instance to lookup within
+/// \param name the export name to lookup
+/// \param name_len the byte length of `name`
+/// \param item where to store the returned value
+///
+/// Returns nonzero if the export was found, and `item` is filled in. Otherwise
+/// returns 0.
+///
+/// Doesn't take ownership of any arguments but does return ownership of the
+/// #wasmtime_extern_t.
+@ffi.Native<
+  ffi.Bool Function(
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasmtime_instance>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_extern>,
+  )
+>()
+external bool wasmtime_instance_export_get(
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<wasmtime_instance> instance,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_extern> item,
+);
+
+/// \brief Creates a new linker for the specified engine.
+///
+/// This function does not take ownership of the engine argument, and the caller
+/// is expected to delete the returned linker.
+@ffi.Native<ffi.Pointer<wasmtime_linker> Function(ffi.Pointer<wasm_engine_t>)>()
+external ffi.Pointer<wasmtime_linker> wasmtime_linker_new(
+  ffi.Pointer<wasm_engine_t> engine,
+);
+
+/// \brief Deletes a linker
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_linker>)>()
+external void wasmtime_linker_delete(ffi.Pointer<wasmtime_linker> linker);
+
+/// \brief Configures whether this linker allows later definitions to shadow
+/// previous definitions.
+///
+/// By default this setting is `false`.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_linker>, ffi.Bool)>()
+external void wasmtime_linker_allow_shadowing(
+  ffi.Pointer<wasmtime_linker> linker,
+  bool allow_shadowing,
+);
+
+/// \brief Defines a new item in this linker.
+///
+/// \param linker the linker the name is being defined in.
+/// \param store the store that the `item` is owned by.
+/// \param module the module name the item is defined under.
+/// \param module_len the byte length of `module`
+/// \param name the field name the item is defined under
+/// \param name_len the byte length of `name`
+/// \param item the item that is being defined in this linker.
+///
+/// \return On success `NULL` is returned, otherwise an error is returned which
+/// describes why the definition failed.
+///
+/// For more information about name resolution consult the [Rust
+/// documentation](https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Linker.html#name-resolution).
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_extern>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_define(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<ffi.Char> module,
+  int module_len,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_extern> item,
+);
+
+/// \brief Defines a new function in this linker.
+///
+/// \param linker the linker the name is being defined in.
+/// \param module the module name the item is defined under.
+/// \param module_len the byte length of `module`
+/// \param name the field name the item is defined under
+/// \param name_len the byte length of `name`
+/// \param ty the type of the function that's being defined
+/// \param cb the host callback to invoke when the function is called
+/// \param data the host-provided data to provide as the first argument to the
+/// callback
+/// \param finalizer an optional finalizer for the `data` argument.
+///
+/// \return On success `NULL` is returned, otherwise an error is returned which
+/// describes why the definition failed.
+///
+/// For more information about name resolution consult the [Rust
+/// documentation](https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Linker.html#name-resolution).
+///
+/// Note that this function does not create a #wasmtime_func_t. This creates a
+/// store-independent function within the linker, allowing this function
+/// definition to be used with multiple stores.
+///
+/// For more information about host callbacks see #wasmtime_func_new.
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasm_functype_t>,
+    ffi.Pointer<
+      ffi.NativeFunction<
+        ffi.Pointer<wasm_trap_t> Function(
+          ffi.Pointer<ffi.Void> env,
+          ffi.Pointer<wasmtime_caller> caller,
+          ffi.Pointer<wasmtime_val> args,
+          ffi.Size nargs,
+          ffi.Pointer<wasmtime_val> results,
+          ffi.Size nresults,
+        )
+      >
+    >,
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_define_func(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<ffi.Char> module,
+  int module_len,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasm_functype_t> ty,
+  ffi.Pointer<
+    ffi.NativeFunction<
+      ffi.Pointer<wasm_trap_t> Function(
+        ffi.Pointer<ffi.Void> env,
+        ffi.Pointer<wasmtime_caller> caller,
+        ffi.Pointer<wasmtime_val> args,
+        ffi.Size nargs,
+        ffi.Pointer<wasmtime_val> results,
+        ffi.Size nresults,
+      )
+    >
+  >
+  cb,
+  ffi.Pointer<ffi.Void> data,
+  ffi.Pointer<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>
+  finalizer,
+);
+
+/// \brief Defines WASI functions in this linker.
+///
+/// \param linker the linker the name is being defined in.
+///
+/// \return On success `NULL` is returned, otherwise an error is returned which
+/// describes why the definition failed.
+///
+/// This function will provide WASI function names in the specified linker. Note
+/// that when an instance is created within a store then the store also needs to
+/// have its WASI settings configured with #wasmtime_context_set_wasi for WASI
+/// functions to work, otherwise an assert will be tripped that will abort the
+/// process.
+///
+/// For more information about name resolution consult the [Rust
+/// documentation](https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Linker.html#name-resolution).
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(ffi.Pointer<wasmtime_linker>)
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_define_wasi(
+  ffi.Pointer<wasmtime_linker> linker,
+);
+
+/// \brief Defines an instance under the specified name in this linker.
+///
+/// \param linker the linker the name is being defined in.
+/// \param store the store that owns `instance`
+/// \param name the module name to define `instance` under.
+/// \param name_len the byte length of `name`
+/// \param instance a previously-created instance.
+///
+/// \return On success `NULL` is returned, otherwise an error is returned which
+/// describes why the definition failed.
+///
+/// This function will take all of the exports of the `instance` provided and
+/// defined them under a module called `name` with a field name as the export's
+/// own name.
+///
+/// For more information about name resolution consult the [Rust
+/// documentation](https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Linker.html#name-resolution).
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_instance>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_define_instance(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_instance> instance,
+);
+
+/// \brief Instantiates a #wasm_module_t with the items defined in this linker.
+///
+/// \param linker the linker used to instantiate the provided module.
+/// \param store the store that is used to instantiate within
+/// \param module the module that is being instantiated.
+/// \param instance the returned instance, if successful.
+/// \param trap a trap returned, if the start function traps.
+///
+/// \return One of three things can happen as a result of this function. First
+/// the module could be successfully instantiated and returned through
+/// `instance`, meaning the return value and `trap` are both set to `NULL`.
+/// Second the start function may trap, meaning the return value and `instance`
+/// are set to `NULL` and `trap` describes the trap that happens. Finally
+/// instantiation may fail for another reason, in which case an error is returned
+/// and `trap` and `instance` are set to `NULL`.
+///
+/// This function will attempt to satisfy all of the imports of the `module`
+/// provided with items previously defined in this linker. If any name isn't
+/// defined in the linker than an error is returned. (or if the previously
+/// defined item is of the wrong type).
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<wasmtime_module>,
+    ffi.Pointer<wasmtime_instance>,
+    ffi.Pointer<ffi.Pointer<wasm_trap_t>>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_instantiate(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<wasmtime_module> module,
+  ffi.Pointer<wasmtime_instance> instance,
+  ffi.Pointer<ffi.Pointer<wasm_trap_t>> trap,
+);
+
+/// \brief Defines automatic instantiations of a #wasm_module_t in this linker.
+///
+/// \param linker the linker the module is being added to
+/// \param store the store that is used to instantiate `module`
+/// \param name the name of the module within the linker
+/// \param name_len the byte length of `name`
+/// \param module the module that's being instantiated
+///
+/// \return An error if the module could not be instantiated or added or `NULL`
+/// on success.
+///
+/// This function automatically handles [Commands and
+/// Reactors](https://github.com/WebAssembly/WASI/blob/master/design/application-abi.md#current-unstable-abi)
+/// instantiation and initialization.
+///
+/// For more information see the [Rust
+/// documentation](https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Linker.html#method.module).
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_module>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_module(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_module> module,
+);
+
+/// \brief Acquires the "default export" of the named module in this linker.
+///
+/// \param linker the linker to load from
+/// \param store the store to load a function into
+/// \param name the name of the module to get the default export for
+/// \param name_len the byte length of `name`
+/// \param func where to store the extracted default function.
+///
+/// \return An error is returned if the default export could not be found, or
+/// `NULL` is returned and `func` is filled in otherwise.
+///
+/// For more information see the [Rust
+/// documentation](https://bytecodealliance.github.io/wasmtime/api/wasmtime/struct.Linker.html#method.get_default).
+@ffi.Native<
+  ffi.Pointer<wasmtime_error> Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_func>,
+  )
+>()
+external ffi.Pointer<wasmtime_error> wasmtime_linker_get_default(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_func> func,
+);
+
+/// \brief Loads an item by name from this linker.
+///
+/// \param linker the linker to load from
+/// \param store the store to load the item into
+/// \param module the name of the module to get
+/// \param module_len the byte length of `module`
+/// \param name the name of the field to get
+/// \param name_len the byte length of `name`
+/// \param item where to store the extracted item
+///
+/// \return A nonzero value if the item is defined, in which case `item` is also
+/// filled in. Otherwise zero is returned.
+@ffi.Native<
+  ffi.Bool Function(
+    ffi.Pointer<wasmtime_linker>,
+    ffi.Pointer<wasmtime_context>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<ffi.Char>,
+    ffi.Size,
+    ffi.Pointer<wasmtime_extern>,
+  )
+>()
+external bool wasmtime_linker_get(
+  ffi.Pointer<wasmtime_linker> linker,
+  ffi.Pointer<wasmtime_context> store,
+  ffi.Pointer<ffi.Char> module,
+  int module_len,
+  ffi.Pointer<ffi.Char> name,
+  int name_len,
+  ffi.Pointer<wasmtime_extern> item,
+);
+
+/// \brief Attempts to extract the trap code from this trap.
+///
+/// Returns `true` if the trap is an instruction trap triggered while
+/// executing Wasm. If `true` is returned then the trap code is returned
+/// through the `code` pointer. If `false` is returned then this is not
+/// an instruction trap -- traps can also be created using wasm_trap_new,
+/// or occur with WASI modules exiting with a certain exit code.
+@ffi.Native<
+  ffi.Bool Function(ffi.Pointer<wasm_trap_t>, ffi.Pointer<ffi.Uint8>)
+>()
+external bool wasmtime_trap_code(
+  ffi.Pointer<wasm_trap_t> arg0,
+  ffi.Pointer<ffi.Uint8> code,
+);
+
 /// \brief Converts from the text format of WebAssembly to the binary format.
 ///
 /// \param wat this it the input pointer with the WebAssembly Text Format inside
@@ -201,10 +792,226 @@ final class wasm_config_t extends ffi.Opaque {}
 
 final class wasm_engine_t extends ffi.Opaque {}
 
+final class wasm_store_t extends ffi.Opaque {}
+
+final class wasm_valtype_t extends ffi.Opaque {}
+
+final class wasm_valtype_vec_t extends ffi.Opaque {}
+
+final class wasm_functype_t extends ffi.Opaque {}
+
+/// ////////////////////////////////////////////////////////////////////////////
+final class wasm_ref_t extends ffi.Opaque {}
+
+final class UnnamedUnion extends ffi.Union {
+  @ffi.Int32()
+  external int i32;
+
+  @ffi.Int64()
+  external int i64;
+
+  @ffi.Float()
+  external double f32;
+
+  @ffi.Double()
+  external double f64;
+
+  external ffi.Pointer<wasm_ref_t> ref;
+}
+
+final class wasm_val_t extends ffi.Struct {
+  @ffi.Uint8()
+  external int kind;
+
+  external UnnamedUnion of;
+}
+
+final class wasm_trap_t extends ffi.Opaque {}
+
 final class wasmtime_error extends ffi.Opaque {}
 
 final class wasmtime_module extends ffi.Opaque {}
 
+final class wasmtime_sharedmemory extends ffi.Opaque {}
+
 final class wasmtime_store extends ffi.Opaque {}
 
 final class wasmtime_context extends ffi.Opaque {}
+
+/// \brief Representation of a function in Wasmtime.
+///
+/// Functions in Wasmtime are represented as an index into a store and don't
+/// have any data or destructor associated with the #wasmtime_func_t value.
+/// Functions cannot interoperate between #wasmtime_store_t instances and if the
+/// wrong function is passed to the wrong store then it may trigger an assertion
+/// to abort the process.
+final class wasmtime_func extends ffi.Struct {
+  /// Internal identifier of what store this belongs to.
+  ///
+  /// This field may be zero when used in conjunction with #wasmtime_val_t
+  /// to represent a null `funcref` value in WebAssembly. For a valid function
+  /// this field is otherwise never zero.
+  @ffi.Uint64()
+  external int store_id;
+
+  /// Private field for Wasmtime, undefined if `store_id` is zero.
+  external ffi.Pointer<ffi.Void> __private;
+}
+
+final class UnnamedStruct extends ffi.Struct {
+  /// Internal identifier of what store this belongs to, never zero.
+  @ffi.Uint64()
+  external int store_id;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private1;
+}
+
+/// \brief Representation of a table in Wasmtime.
+///
+/// Tables in Wasmtime are represented as an index into a store and don't
+/// have any data or destructor associated with the #wasmtime_table_t value.
+/// Tables cannot interoperate between #wasmtime_store_t instances and if the
+/// wrong table is passed to the wrong store then it may trigger an assertion
+/// to abort the process.
+final class wasmtime_table extends ffi.Struct {
+  external UnnamedStruct unnamed;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private2;
+}
+
+final class UnnamedStruct$1 extends ffi.Struct {
+  /// Internal identifier of what store this belongs to, never zero.
+  @ffi.Uint64()
+  external int store_id;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private1;
+}
+
+/// \brief Representation of a memory in Wasmtime.
+///
+/// Memories in Wasmtime are represented as an index into a store and don't
+/// have any data or destructor associated with the #wasmtime_memory_t value.
+/// Memories cannot interoperate between #wasmtime_store_t instances and if the
+/// wrong memory is passed to the wrong store then it may trigger an assertion
+/// to abort the process.
+final class wasmtime_memory extends ffi.Struct {
+  external UnnamedStruct$1 unnamed;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private2;
+}
+
+/// \brief Representation of a global in Wasmtime.
+///
+/// Globals in Wasmtime are represented as an index into a store and don't
+/// have any data or destructor associated with the #wasmtime_global_t value.
+/// Globals cannot interoperate between #wasmtime_store_t instances and if the
+/// wrong global is passed to the wrong store then it may trigger an assertion
+/// to abort the process.
+final class wasmtime_global extends ffi.Struct {
+  /// Internal identifier of what store this belongs to, never zero.
+  @ffi.Uint64()
+  external int store_id;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private1;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private2;
+
+  /// Private field for Wasmtime.
+  @ffi.Uint32()
+  external int __private3;
+}
+
+/// \typedef wasmtime_extern_union_t
+/// \brief Convenience alias for #wasmtime_extern_union
+///
+/// \union wasmtime_extern_union
+/// \brief Container for different kinds of extern items.
+///
+/// This type is contained in #wasmtime_extern_t and contains the payload for the
+/// various kinds of items an extern wasm item can be.
+final class wasmtime_extern_union extends ffi.Union {
+  /// Field used if #wasmtime_extern_t::kind is #WASMTIME_EXTERN_FUNC
+  external wasmtime_func func;
+
+  /// Field used if #wasmtime_extern_t::kind is #WASMTIME_EXTERN_GLOBAL
+  external wasmtime_global global;
+
+  /// Field used if #wasmtime_extern_t::kind is #WASMTIME_EXTERN_TABLE
+  external wasmtime_table table;
+
+  /// Field used if #wasmtime_extern_t::kind is #WASMTIME_EXTERN_MEMORY
+  external wasmtime_memory memory;
+
+  /// Field used if #wasmtime_extern_t::kind is #WASMTIME_EXTERN_SHAREDMEMORY
+  external ffi.Pointer<wasmtime_sharedmemory> sharedmemory;
+}
+
+/// \typedef wasmtime_extern_t
+/// \brief Convenience alias for #wasmtime_extern_t
+///
+/// \union wasmtime_extern
+/// \brief Container for different kinds of extern items.
+///
+/// Note that this structure may contain an owned value, namely
+/// #wasmtime_module_t, depending on the context in which this is used. APIs
+/// which consume a #wasmtime_extern_t do not take ownership, but APIs that
+/// return #wasmtime_extern_t require that #wasmtime_extern_delete is called to
+/// deallocate the value.
+final class wasmtime_extern extends ffi.Struct {
+  /// Discriminant of which field of #of is valid.
+  @ffi.Uint8()
+  external int kind;
+
+  /// Container for the extern item's value.
+  external wasmtime_extern_union of;
+}
+
+/// \typedef wasmtime_val_t
+/// \brief Convenience alias for #wasmtime_val_t
+///
+/// \union wasmtime_val
+/// \brief Container for different kinds of wasm values.
+///
+/// Note that this structure may contain an owned value, namely rooted GC
+/// references, depending on the context in which this is used. APIs which
+/// consume a #wasmtime_val_t do not take ownership, but APIs that return
+/// #wasmtime_val_t require that #wasmtime_val_unroot is called to clean up
+/// any possible GC roots in the value.
+///
+/// If you do not unroot the value, *even if you free the corresponding
+/// Store*, there will be some memory leaked, because GC roots use a
+/// separate allocation to track liveness.
+final class wasmtime_val extends ffi.Opaque {}
+
+final class wasmtime_caller extends ffi.Opaque {}
+
+/// \brief Representation of a instance in Wasmtime.
+///
+/// Instances are represented with a 64-bit identifying integer in Wasmtime.
+/// They do not have any destructor associated with them. Instances cannot
+/// interoperate between #wasmtime_store_t instances and if the wrong instance
+/// is passed to the wrong store then it may trigger an assertion to abort the
+/// process.
+final class wasmtime_instance extends ffi.Struct {
+  /// Internal identifier of what store this belongs to, never zero.
+  @ffi.Uint64()
+  external int store_id;
+
+  /// Private data for use in Wasmtime.
+  @ffi.Size()
+  external int __private;
+}
+
+final class wasmtime_linker extends ffi.Opaque {}

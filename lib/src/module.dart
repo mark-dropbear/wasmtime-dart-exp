@@ -58,6 +58,7 @@ class Module {
   }
 
   late final ffi.Pointer<wasmtime_module> _ptr;
+  ffi.Pointer<wasmtime_module> get ptr => _ptr;
   bool _isDisposed = false;
 
   /// Disposes the [Module] object.
