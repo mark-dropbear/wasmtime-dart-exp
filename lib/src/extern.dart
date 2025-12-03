@@ -14,11 +14,24 @@ class Extern {
   /// Creates an [Extern] from a raw pointer.
   factory Extern.fromNative(ffi.Pointer<WasmtimeExtern> ptr) => Extern._(ptr);
 
+  /// Creates an [Extern] from a [Func].
+  factory Extern.fromFunc(Func func) {
+    final ptr = calloc<WasmtimeExtern>();
+    ptr.ref.kind = 0; // WASMTIME_EXTERN_FUNC
+    final funcStruct = func.ptr.cast<WasmtimeFuncStruct>();
+    ptr.ref.of.func.store_id = funcStruct.ref.store_id;
+    ptr.ref.of.func.private_data = funcStruct.ref.private_data;
+    return Extern._(ptr);
+  }
+
   /// Disposes of the [Extern].
   void dispose() {
     wasmtime_extern_delete(_ptr.cast());
     calloc.free(_ptr);
   }
+
+  /// Returns the native pointer to the extern.
+  ffi.Pointer<WasmtimeExtern> get ptr => _ptr;
 
   /// Returns the extern as a [Func], or null if it is not a function.
   Func? get asFunc {

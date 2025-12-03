@@ -3,8 +3,11 @@
 /// More dartdocs go here.
 library;
 
+export 'src/caller.dart';
 export 'src/config.dart';
+export 'src/context.dart';
 export 'src/engine.dart';
+export 'src/extern.dart';
 export 'src/func.dart';
 export 'src/instance.dart';
 export 'src/linker.dart';

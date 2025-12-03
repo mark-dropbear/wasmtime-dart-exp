@@ -75,6 +75,10 @@ void main() {
       'wasm_frame_module_offset',
       'wasmtime_frame_func_name',
       'wasmtime_frame_module_name',
+      'wasmtime_config_wasm_reference_types_set',
+      'wasmtime_config_wasm_gc_set',
+      'wasmtime_error_message',
+      'wasmtime_error_delete',
     }),
     output: Output(
       dartFile: packageRoot.resolve('lib/src/third_party/wasmtime.g.dart'),

@@ -8,6 +8,8 @@ import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 class Config {
   /// Creates a new [Config] with default settings.
   Config() : _ptr = wasm_config_new() {
+    wasmtime_config_wasm_reference_types_set(_ptr, true);
+    wasmtime_config_wasm_gc_set(_ptr, true);
     if (_ptr == ffi.nullptr) {
       throw Exception('Failed to create wasm_config_t');
     }

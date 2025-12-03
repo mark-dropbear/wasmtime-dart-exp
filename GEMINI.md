@@ -43,3 +43,5 @@ The current implementation includes the following classes:
 ## Reference Implementations
 
 The `reference` folder contains Wasmtime wrapping/implementations for other languages, including .NET, Python, and Go. These implementations should be used as authoritative references when developing the Dart package to ensure consistency and correctness.
+
+**Crucially, you must consult these reference implementations to ensure that the Dart implementation and its test suite are of equal or greater quality.** Verify that we are covering similar test cases and handling edge cases in a comparable manner.

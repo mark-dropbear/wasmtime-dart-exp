@@ -2,6 +2,7 @@ import 'dart:ffi' as ffi;
 
 import 'package:ffi/ffi.dart';
 import 'package:wasmtime/src/engine.dart';
+import 'package:wasmtime/src/extern.dart';
 import 'package:wasmtime/src/instance.dart';
 import 'package:wasmtime/src/module.dart';
 import 'package:wasmtime/src/store.dart';
@@ -56,6 +57,30 @@ class Linker {
     if (error != ffi.nullptr) {
       // TODO: Handle error
       throw Exception('Failed to define WASI');
+    }
+  }
+
+  /// Defines an extern in the linker.
+  void define(Store store, String module, String name, Extern item) {
+    final modulePtr = module.toNativeUtf8();
+    final namePtr = name.toNativeUtf8();
+    try {
+      final error = wasmtime_linker_define(
+        _ptr,
+        store.context,
+        modulePtr.cast(),
+        module.length,
+        namePtr.cast(),
+        name.length,
+        item.ptr.cast(),
+      );
+      if (error != ffi.nullptr) {
+        // TODO: Handle error
+        throw Exception('Failed to define extern');
+      }
+    } finally {
+      calloc.free(modulePtr);
+      calloc.free(namePtr);
     }
   }
 

@@ -62,10 +62,38 @@ enum ValKind {
 
   /// Creates a [ValKind] from a native integer value.
   static ValKind fromValue(int value) {
+    // Handle standard Wasm type kinds
+    if (value == 128) return ValKind.externref;
+    if (value == 129) return ValKind.funcref;
+    // V128 in standard Wasm C API? usually 0x7b (123)
+    if (value == 123) return ValKind.v128;
+
     return ValKind.values.firstWhere(
       (e) => e.value == value,
       orElse: () => throw ArgumentError('Unknown ValKind value: $value'),
     );
+  }
+
+  /// Returns the standard Wasm type kind for this [ValKind].
+  int toWasmKind() {
+    switch (this) {
+      case ValKind.i32:
+        return 0; // WASM_I32
+      case ValKind.i64:
+        return 1; // WASM_I64
+      case ValKind.f32:
+        return 2; // WASM_F32
+      case ValKind.f64:
+        return 3; // WASM_F64
+      case ValKind.externref:
+        return 128; // WASM_EXTERNREF
+      case ValKind.funcref:
+        return 129; // WASM_FUNCREF
+      case ValKind.v128:
+        return 123; // WASM_V128 (approximate, need verification)
+      case ValKind.anyref:
+        return 130; // WASM_ANYREF (approximate)
+    }
   }
 }
 
@@ -87,8 +115,14 @@ final class WasmtimeValUnion extends ffi.Union {
   @ffi.Double()
   external double f64;
 
-  /// Reference value.
+  /// Reference value (generic/funcref).
   external WasmtimeRefStruct ref;
+
+  /// Externref value.
+  external WasmtimeExternRefStruct externref;
+
+  /// Funcref value.
+  external WasmtimeFuncStruct funcref;
 
   /// v128 value.
   external WasmtimeV128 v128;
@@ -111,7 +145,25 @@ final class WasmtimeV128 extends ffi.Struct {
   external int high;
 }
 
-/// Struct for Wasmtime reference value.
+/// Struct for Wasmtime externref value.
+final class WasmtimeExternRefStruct extends ffi.Struct {
+  /// Store ID.
+  @ffi.Uint64()
+  external int store_id;
+
+  /// Internal private data 1.
+  @ffi.Uint32()
+  external int private1;
+
+  /// Internal private data 2.
+  @ffi.Uint32()
+  external int private2;
+
+  /// Internal private data 3.
+  external ffi.Pointer<ffi.Void> private3;
+}
+
+/// Struct for Wasmtime reference value (generic/funcref).
 final class WasmtimeRefStruct extends ffi.Struct {
   /// Store ID.
   @ffi.Uint64()
@@ -119,7 +171,7 @@ final class WasmtimeRefStruct extends ffi.Struct {
 
   /// Index or private data.
   @ffi.Uint64()
-  external int index; // or __private data
+  external int index;
 }
 
 /// Struct for Wasmtime value type vector.

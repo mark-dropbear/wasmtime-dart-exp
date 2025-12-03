@@ -117,6 +117,43 @@ external void wasm_trap_trace(
   ffi.Pointer<wasm_frame_vec_t> out,
 );
 
+/// \brief Deletes an error.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasmtime_error>)>()
+external void wasmtime_error_delete(ffi.Pointer<wasmtime_error> error);
+
+/// \brief Returns the string description of this error.
+///
+/// This will "render" the error to a string and then return the string
+/// representation of the error to the caller. The `message` argument should be
+/// uninitialized before this function is called and the caller is responsible
+/// for deallocating it with #wasm_byte_vec_delete afterwards.
+@ffi.Native<
+  ffi.Void Function(ffi.Pointer<wasmtime_error>, ffi.Pointer<wasm_byte_vec_t>)
+>()
+external void wasmtime_error_message(
+  ffi.Pointer<wasmtime_error> error,
+  ffi.Pointer<wasm_byte_vec_t> message,
+);
+
+/// \brief Configures whether the WebAssembly reference types proposal is
+/// enabled.
+///
+/// This setting is `false` by default.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_config_t>, ffi.Bool)>()
+external void wasmtime_config_wasm_reference_types_set(
+  ffi.Pointer<wasm_config_t> arg0,
+  bool arg1,
+);
+
+/// \brief Configures whether the WebAssembly GC proposal is enabled.
+///
+/// This setting is `false` by default.
+@ffi.Native<ffi.Void Function(ffi.Pointer<wasm_config_t>, ffi.Bool)>()
+external void wasmtime_config_wasm_gc_set(
+  ffi.Pointer<wasm_config_t> arg0,
+  bool arg1,
+);
+
 /// \brief Increments the engine-local epoch variable.
 ///
 /// This function will increment the engine's current epoch which can be used to

@@ -2,8 +2,8 @@ import 'dart:ffi' as ffi;
 
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
+import 'package:wasmtime/src/context.dart';
 import 'package:wasmtime/src/func.dart';
-import 'package:wasmtime/src/store.dart';
 import 'package:wasmtime/src/third_party/wasmtime.g.dart';
 import 'package:wasmtime/src/types.dart';
 
@@ -56,6 +56,115 @@ class ValType {
   String toString() => kind.toString();
 }
 
+/// Represents the type of a WebAssembly function.
+class FuncType {
+  final ffi.Pointer<wasm_functype_t> _ptr;
+
+  FuncType._(this._ptr);
+
+  /// Creates a new [FuncType] with the given parameters and results.
+  factory FuncType(List<ValKind> params, List<ValKind> results) {
+    final paramsVec = calloc<WasmValTypeVec>();
+    final resultsVec = calloc<WasmValTypeVec>();
+
+    try {
+      paramsVec.ref.size = params.length;
+      paramsVec.ref.data = calloc<ffi.Pointer<wasm_valtype_t>>(params.length);
+      for (var i = 0; i < params.length; i++) {
+        paramsVec.ref.data[i] = wasm_valtype_new(params[i].toWasmKind());
+      }
+
+      resultsVec.ref.size = results.length;
+      resultsVec.ref.data = calloc<ffi.Pointer<wasm_valtype_t>>(results.length);
+      for (var i = 0; i < results.length; i++) {
+        resultsVec.ref.data[i] = wasm_valtype_new(results[i].toWasmKind());
+      }
+
+      // wasm_functype_new takes ownership of the vectors' contents (the valtypes),
+      // but does it take ownership of the vector structs themselves?
+      // The C API `wasm_functype_new` takes `wasm_valtype_vec_t*`.
+      // Usually it copies the vector content.
+      // Wait, `wasm_functype_new` signature in C is `wasm_functype_t* wasm_functype_new(wasm_valtype_vec_t* params, wasm_valtype_vec_t* results)`.
+      // It usually TAKES OWNERSHIP of the vectors passed in.
+      // This means we should NOT free the vectors' data if `wasm_functype_new` succeeds.
+      // But we allocated the `WasmValTypeVec` struct itself on heap.
+      // The C API expects `wasm_valtype_vec_t*`.
+      // If we pass a pointer to our struct, Wasmtime will read from it.
+      // Does it free the pointer we passed?
+      // Standard Wasm C API `wasm_functype_new` takes ownership of the vectors.
+      // This means it will call `wasm_valtype_vec_delete` on them?
+      // No, it takes `wasm_valtype_vec_t*`.
+      // If it takes ownership, it means it consumes the data.
+      // We should verify this.
+      // Assuming it takes ownership of the CONTENTS.
+      // We should probably use `wasm_valtype_vec_new` if available, but it's not.
+      // So we manually built it.
+      // If `wasm_functype_new` takes ownership, it will eventually free the `wasm_valtype_t`s.
+      // We just need to free our `WasmValTypeVec` struct wrapper if Wasmtime copies the vector struct content.
+      // Usually C structs are passed by value if they are small, but here they are pointers.
+      // `wasm_functype_new` takes pointers.
+      // It likely copies the vector description (size, data ptr) and takes ownership of the data ptr.
+      // So we should free `paramsVec` and `resultsVec` structs, but NOT `paramsVec.ref.data` (the array of pointers) or the `wasm_valtype_t`s.
+
+      final ptr = wasm_functype_new(paramsVec.cast(), resultsVec.cast());
+
+      return FuncType._(ptr);
+    } finally {
+      // We free the struct wrappers.
+      // We do NOT free the data arrays or the valtypes, as ownership is transferred.
+      calloc.free(paramsVec);
+      calloc.free(resultsVec);
+    }
+  }
+
+  /// Creates a [FuncType] from a raw pointer.
+  factory FuncType.fromPtr(ffi.Pointer<wasm_functype_t> ptr) => FuncType._(ptr);
+
+  /// Returns the parameter types of this function type.
+  List<ValType> get params {
+    final vec = wasm_functype_params(_ptr);
+    final list = <ValType>[];
+    // vec is a pointer to wasm_valtype_vec_t.
+    // We need to read it.
+    final struct = vec.cast<WasmValTypeVec>().ref;
+    for (var i = 0; i < struct.size; i++) {
+      // We need to clone the type because the vector owns it?
+      // Or does ValType wrap a reference?
+      // ValType.fromPtr wraps the pointer.
+      // If we return ValType, user might call dispose().
+      // But these types belong to the FuncType.
+      // We should probably return a copy or a non-owning wrapper.
+      // But ValType.dispose calls wasm_valtype_delete.
+      // So we must return a COPY.
+      final typePtr = struct.data[i];
+      final copy = wasm_valtype_new(wasm_valtype_kind(typePtr));
+      list.add(ValType.fromPtr(copy));
+    }
+    return list;
+  }
+
+  /// Returns the result types of this function type.
+  List<ValType> get results {
+    final vec = wasm_functype_results(_ptr);
+    final list = <ValType>[];
+    final struct = vec.cast<WasmValTypeVec>().ref;
+    for (var i = 0; i < struct.size; i++) {
+      final typePtr = struct.data[i];
+      final copy = wasm_valtype_new(wasm_valtype_kind(typePtr));
+      list.add(ValType.fromPtr(copy));
+    }
+    return list;
+  }
+
+  /// Returns the native pointer to the function type.
+  ffi.Pointer<wasm_functype_t> get ptr => _ptr;
+
+  /// Disposes of the [FuncType].
+  void dispose() {
+    wasm_functype_delete(_ptr);
+  }
+}
+
 /// Represents a WebAssembly value.
 class Val {
   /// The kind of the value.
@@ -67,6 +176,16 @@ class Val {
   // Registry to pin Dart objects passed as externref
   static final Map<int, Object> _externRefRegistry = {};
   static int _nextExternRefId = 1;
+
+  static void _finalizer(ffi.Pointer<ffi.Void> data) {
+    final id = data.address;
+    _externRefRegistry.remove(id);
+  }
+
+  static final _finalizerNative =
+      ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Void>)>.listener(
+        _finalizer,
+      );
 
   /// Creates an i32 value.
   Val.i32(int val) : kind = ValKind.i32, value = val;
@@ -104,67 +223,46 @@ class Val {
       case ValKind.v128:
         return Val.v128(V128(native.of.v128.low, native.of.v128.high));
       case ValKind.funcref:
-        if (native.of.ref.store_id == 0) return Val.funcref(null);
-        // TODO: We need to retrieve the Func object from the store/context using the ID?
-        // Or just wrap the raw pointer/ID?
-        // For now, we can't easily reconstruct the Dart Func object from just the raw struct
-        // without a lookup mechanism in Store.
-        // But wait, Func.fromNative creates a Func wrapper around a pointer.
-        // The WasmtimeVal contains a WasmtimeRefStruct (store_id, index).
-        // To get a Func pointer, we might need `wasm_func_copy` or similar if we had a pointer.
-        // But here we have a struct.
-        // Actually, `wasmtime_val_funcref_get` returns `wasmtime_func_t`.
-        // Our `WasmtimeValUnion` has `ref` which maps to `wasmtime_func_t` (store_id, index).
-        // So we can create a Func from this struct.
-        final funcStruct = calloc<WasmtimeFuncStruct>();
-        funcStruct.ref.store_id = native.of.ref.store_id;
-        funcStruct.ref.private_data = ffi.Pointer.fromAddress(
-          native.of.ref.index,
-        ); // index is private_data?
-        // Wait, WasmtimeFuncStruct has store_id and private_data (Pointer<Void>).
-        // WasmtimeRefStruct has store_id and index (Uint64).
-        // In C, wasmtime_func_t has store_id and size_t index.
-        // So index IS private_data (cast to int).
-        // We need to be careful here.
-        // Let's assume for now we can create a Func wrapper.
-        return Val.funcref(Func.fromNative(funcStruct.ref));
+        if (native.of.funcref.store_id == 0) return Val.funcref(null);
+        return Val.funcref(Func.fromNative(native.of.funcref));
       case ValKind.externref:
-        if (native.of.ref.store_id == 0) return Val.externref(null);
-        // Retrieve pinned object
-        // The index in WasmtimeRefStruct corresponds to our registry ID?
-        // No, wasmtime manages its own indices.
-        // We need `wasmtime_externref_data` to get the data we put in.
-        // But `fromNative` here takes `WasmtimeVal` struct, not `wasmtime_val_t` pointer?
-        // Ah, `WasmtimeVal` IS the Dart projection of `wasmtime_val_t`.
-        // But to get data from externref, we need the context.
-        // `fromNative` needs `Store` context to resolve externref?
-        // Yes, `wasmtime_externref_data` takes context.
-        // So `fromNative` needs `Store`.
-        // I should update `fromNative` signature.
-        return Val.externref(null); // Placeholder until we update signature
+        if (native.of.externref.store_id == 0) return Val.externref(null);
+        // Without context, we can't retrieve the data.
+        return Val.externref(null);
       default:
         throw ArgumentError('Unknown ValKind: $kind');
     }
   }
 
-  /// Creates a [Val] from a native [WasmtimeVal] struct, using the provided [Store] for context.
-  // ignore: avoid_unused_constructor_parameters
-  factory Val.fromNativeWithStore(Store store, WasmtimeVal native) {
+  /// Creates a [Val] from a native [WasmtimeVal] struct, using the provided [WasmContext] for context.
+  factory Val.fromNativeWithContext(WasmContext context, WasmtimeVal native) {
     final kind = ValKind.fromValue(native.kind);
     if (kind == ValKind.externref) {
-      if (native.of.ref.store_id == 0) return Val.externref(null);
-      // We need a pointer to the externref to call wasmtime_externref_data.
-      // But we only have the struct value here.
-      // We can reconstruct a temporary externref on stack?
-      // Or we should pass the pointer to `fromNative`.
-      // Let's change `fromNative` to take `Pointer<WasmtimeVal>`.
-      return Val.externref(null); // TODO: Implement
+      if (native.of.externref.store_id == 0) return Val.externref(null);
+
+      final externRefPtr = calloc<WasmtimeExternRefStruct>();
+      externRefPtr.ref.store_id = native.of.externref.store_id;
+      externRefPtr.ref.private1 = native.of.externref.private1;
+      externRefPtr.ref.private2 = native.of.externref.private2;
+      externRefPtr.ref.private3 = native.of.externref.private3;
+
+      final dataPtr = wasmtime_externref_data(
+        context.context,
+        externRefPtr.cast(),
+      );
+      calloc.free(externRefPtr);
+
+      if (dataPtr == ffi.nullptr) return Val.externref(null);
+
+      final id = dataPtr.address;
+      final obj = _externRefRegistry[id];
+      return Val.externref(obj);
     }
     return Val.fromNative(native);
   }
 
   /// Converts this value to a native [WasmtimeVal] struct.
-  void toNative(ffi.Pointer<WasmtimeVal> ptr, {Store? store}) {
+  void toNative(ffi.Pointer<WasmtimeVal> ptr, {WasmContext? context}) {
     ptr.ref.kind = kind.value;
     switch (kind) {
       case ValKind.i32:
@@ -182,49 +280,44 @@ class Val {
       case ValKind.funcref:
         final f = value as Func?;
         if (f != null) {
-          // We need to extract the raw func struct from Func.
-          // Func wraps a pointer to wasmtime_func_t.
-          // We need to copy that struct into ptr.ref.of.ref
-          // But Func._ptr points to wasmtime_func_t.
-          // We can cast Func._ptr to Pointer<WasmtimeRefStruct> and copy?
-          // Yes, wasmtime_func_t is compatible with WasmtimeRefStruct layout.
-          final funcPtr = f.ptr.cast<WasmtimeRefStruct>();
-          ptr.ref.of.ref.store_id = funcPtr.ref.store_id;
-          ptr.ref.of.ref.index = funcPtr.ref.index;
+          final funcPtr = f.ptr.cast<WasmtimeFuncStruct>();
+          ptr.ref.of.funcref.store_id = funcPtr.ref.store_id;
+          ptr.ref.of.funcref.private_data = funcPtr.ref.private_data;
         } else {
-          ptr.ref.of.ref.store_id = 0;
-          ptr.ref.of.ref.index = 0;
+          ptr.ref.of.funcref.store_id = 0;
+          ptr.ref.of.funcref.private_data = ffi.nullptr;
         }
       case ValKind.externref:
-        if (store == null) throw ArgumentError('Store required for externref');
+        if (context == null) {
+          throw ArgumentError('WasmContext required for externref');
+        }
         final val = value;
         if (val != null) {
           final id = _nextExternRefId++;
           _externRefRegistry[id] = val;
-          // Create externref
-          // We need to call wasmtime_externref_new
-          // But that returns bool and takes an out pointer.
-          // And we are filling a WasmtimeVal struct here.
-          // We need to create the externref and then copy it to the val struct.
-          // final externRefPtr =
-          //     calloc<WasmtimeRefStruct>(); // externref is same layout
-          // Wait, wasmtime_externref_new takes `void* data` and `finalizer`.
-          // Data will be our ID (cast to pointer).
-          // final data = ffi.Pointer.fromAddress(id);
-          // Finalizer? We need a C function pointer.
-          // For now, pass nullptr? Then we leak registry entries.
-          // We need a native finalizer callback.
-          // Dart FFI supports NativeCallable.
-          // But for now, let's just pin it.
-          // We need to implement finalizer later.
+          final data = ffi.Pointer.fromAddress(id);
 
-          // wasmtime_externref_new(context, data, finalizer, out_externref)
-          // We need to cast WasmtimeRefStruct to wasmtime_externref_t (which is same)
+          final outExternRef = calloc<WasmtimeExternRefStruct>();
+          final success = wasmtime_externref_new(
+            context.context,
+            data.cast(),
+            _finalizerNative.nativeFunction,
+            outExternRef.cast(),
+          );
 
-          // TODO: Implement externref creation
+          if (!success) {
+            calloc.free(outExternRef);
+            throw Exception('Failed to create externref');
+          }
+
+          ptr.ref.kind = ValKind.externref.value;
+          ptr.ref.of.externref = outExternRef.ref;
+          calloc.free(outExternRef);
         } else {
-          ptr.ref.of.ref.store_id = 0;
-          ptr.ref.of.ref.index = 0;
+          ptr.ref.of.externref.store_id = 0;
+          ptr.ref.of.externref.private1 = 0;
+          ptr.ref.of.externref.private2 = 0;
+          ptr.ref.of.externref.private3 = ffi.nullptr;
         }
       default:
         throw ArgumentError('Unknown ValKind: $kind');
